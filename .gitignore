@@ -31,3 +31,6 @@ rustc-ice-*.txt
 .env
 .DS_Store
 .idea/
+
+# Built Android artifacts
+dist/

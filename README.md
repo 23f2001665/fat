@@ -40,7 +40,7 @@ The five primary sections are:
 
 Requirements:
 
-- Rust 1.82 or newer
+- Rust 1.92 or newer
 - A Linux desktop with X11 or Wayland (validated), or another Slint-supported
   desktop platform
 - Runtime libraries for the windowing stack. On Debian/Ubuntu, a typical
@@ -271,39 +271,113 @@ The suite covers:
 
 ## Android
 
-The application is structured to be portable, but this repository has only been
-built and run on desktop Linux. The current `Cargo.toml` enables the `winit`
-backend, not the Android activity backend. Building an APK requires adding the
-Android-specific backend and entry point, plus an SDK/NDK toolchain:
+The app also builds as a standalone Android package for 64-bit ARM devices.
+Slint uses its Android activity backend and Skia renderer; everything else
+(SQLite, services, charts, update verification) is the same Rust code as the
+desktop build.
 
-1. Install Android Studio or the command-line SDK with platform tools, a recent
-   NDK, and JDK 17+.
-2. Install the Rust target and NDK helper:
+### Toolchain
 
-   ```bash
-   rustup target add aarch64-linux-android
-   cargo install cargo-ndk
-   ```
+Validated with:
 
-3. Add an Android backend feature to Slint (for example the matching
-   `backend-android-activity-06` feature), and provide an `android_main`
-   entry point using `slint::android::init` when targeting Android.
-4. Build a shared library and package it with Gradle or `cargo-apk`. A minimal
-   Gradle project needs a native activity, the generated `libfat.so`, and the
-   appropriate `AndroidManifest.xml`.
-5. Install and test on a device or emulator:
+- JDK 17
+- Android SDK platform 35 and build-tools 35.0.0
+- Android NDK 27.2.12479018
+- Rust target `aarch64-linux-android`
+- `cargo-apk` 0.10.0
 
-   ```bash
-   cargo ndk -t arm64-v8a build --release
-   adb install -r path/to/fat.apk
-   ```
+Install the Rust target and packager:
 
-6. For in-app updates, expose the staged package through a host `FileProvider`
-   and grant temporary read access to the system package installer. Version-code
-   downgrades may be rejected by Android.
+```bash
+rustup target add aarch64-linux-android
+cargo install cargo-apk --locked
+```
 
-The SDK/NDK is not available in the desktop development environment used for
-this build, so an APK has not been produced or validated here.
+The build avoids desktop-only dependencies on Android: `fontique` is a
+Linux-only dependency, while Android gets `backend-android-activity-06` and
+Slint's Skia renderer.
+
+### Build
+
+Use the helper script with the SDK installed under `~/Android`:
+
+```bash
+scripts/build-android.sh release
+```
+
+It writes:
+
+```text
+target/release/apk/fat.apk      cargo-apk output
+dist/fat-0.1.0-arm64.apk        convenience copy
+```
+
+The script expects `JAVA_HOME`, `ANDROID_HOME`, and `ANDROID_NDK_ROOT` to point
+at the toolchain, with defaults of `~/Android/jdk-17`, `~/Android/sdk`, and
+`~/Android/sdk/ndk/27.2.12479018`. A debug build is also available:
+
+```bash
+scripts/build-android.sh debug
+```
+
+Building from scratch compiles Skia and can take several minutes.
+
+The generated manifest targets:
+
+| Property | Value |
+| --- | --- |
+| Package | `com.himanshu.fat` |
+| Version | `0.1.0` |
+| Minimum SDK | 26 |
+| Target SDK | 35 |
+| ABI | `arm64-v8a` |
+| Activity | `android.app.NativeActivity` |
+| Orientation | portrait |
+
+The Android entry point is `android_main` in `src/lib.rs`. It resolves
+`AndroidApp::internal_data_path()` and passes that app-private directory to the
+same UI controller used on desktop, so the database and update files stay inside
+the app sandbox and no storage permission is required. The native library is
+linked with 16 KiB ELF segment alignment for newer Android devices, and the
+manifest requests the `INTERNET` permission only for optional HTTPS update
+checks.
+
+### Release signing
+
+`cargo-apk` requires an explicit key for release builds. The helper script uses:
+
+```text
+~/.android/fat-release.keystore
+~/.android/fat-release.keystore.pass
+```
+
+Override them with `CARGO_APK_RELEASE_KEYSTORE` and
+`CARGO_APK_RELEASE_KEYSTORE_PASSWORD`, or set
+`CARGO_APK_RELEASE_KEYSTORE_PASSWORD_FILE` to a different password file. Keep
+the keystore and password out of version control: Android only accepts updates
+signed by the same key. The debug profile instead falls back to the standard
+`~/.android/debug.keystore`.
+
+### Verification
+
+```bash
+apksigner verify --verbose dist/fat-0.1.0-arm64.apk
+aapt dump badging dist/fat-0.1.0-arm64.apk | head
+```
+
+The release APK is verified with APK Signature Scheme v2 and v3. Runtime
+behaviour has not been validated on a physical device or emulator in this
+development environment; installation requires an arm64 device with Android 8.0
+(API 26) or newer:
+
+```bash
+adb install -r dist/fat-0.1.0-arm64.apk
+```
+
+For in-app updates, the staged package must be exposed through an Android
+`FileProvider` content URI and the system package installer given temporary read
+access. Android may reject a version-code downgrade even when the rollback
+package is correctly signed.
 
 ## License
 

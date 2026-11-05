@@ -41,8 +41,15 @@ use crate::utils::date::{
 const DB_FILE_NAME: &str = "workout.db";
 
 pub fn run() -> Result<(), slint::PlatformError> {
+    run_with_data_dir(resolve_data_dir())
+}
+
+/// Runs the UI with an explicit data directory.
+///
+/// Android supplies its app-private directory after the activity has been
+/// initialized, while desktop uses [`resolve_data_dir`].
+pub fn run_with_data_dir(data_dir: PathBuf) -> Result<(), slint::PlatformError> {
     let ui = Rc::new(AppWindow::new()?);
-    let data_dir = resolve_data_dir();
     match AppController::create(Rc::clone(&ui), data_dir) {
         Ok(controller) => {
             controller.initialize();
