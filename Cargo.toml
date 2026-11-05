@@ -1,0 +1,48 @@
+[package]
+name = "fat"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+description = "Local-first personal workout tracker built with Rust and Slint"
+license = "MIT"
+default-run = "fat"
+
+[lib]
+name = "fat"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fat"
+path = "src/main.rs"
+
+[dependencies]
+chrono = { version = "0.4.45", features = ["clock", "serde"] }
+dirs = "5.0.1"
+ed25519-dalek = { version = "2.2.0", default-features = false, features = ["std"] }
+hex = "0.4.3"
+rusqlite = { version = "0.32.1", features = ["bundled", "backup"] }
+semver = "1.0.28"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+sha2 = "0.10.9"
+slint = { version = "1.18.1", default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-2"] }
+fontique = { version = "0.11.1", features = ["fontconfig-dlopen"] }
+thiserror = "2.0.21"
+ureq = { version = "2.12.1", features = ["json", "tls"] }
+
+[build-dependencies]
+slint-build = "1.18.1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
