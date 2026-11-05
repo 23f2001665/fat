@@ -33,4 +33,6 @@ rustc-ice-*.txt
 .idea/
 
 # Built Android artifacts
-dist/
+dist/*
+!dist/fat-*.apk
+!dist/fat-*.apk.sha256

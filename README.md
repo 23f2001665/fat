@@ -5,6 +5,17 @@ A personal workout tracker written in Rust. The UI is built with
 the application runs fully offline. There is no JavaScript runtime, web server,
 or cloud dependency.
 
+## Download
+
+Android (arm64, Android 8.0 or newer):
+
+**[Download FAT 0.1.0 APK](dist/fat-0.1.0-arm64.apk)** — 9.6 MB
+
+SHA-256: `52caaf2d95b986f33ac120c7658962ef194f6668c82c4750f37bdca62dd0d261`
+
+The APK is release-signed and verified with APK Signature Scheme v2/v3. See
+[Android](#android) for build, signing, and verification details.
+
 ## Features
 
 - **Set-level workout logging** with weight, complete reps, partial reps, rest,
