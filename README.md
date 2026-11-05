@@ -9,7 +9,7 @@ or cloud dependency.
 
 Android (arm64, Android 8.0 or newer):
 
-**[Download FAT 0.1.0 APK](dist/fat-0.1.0-arm64.apk)** — 9.6 MB
+**[Download FAT 0.1.0 APK](https://github.com/23f2001665/fat/raw/main/dist/fat-0.1.0-arm64.apk)** — 9.6 MB
 
 SHA-256: `52caaf2d95b986f33ac120c7658962ef194f6668c82c4750f37bdca62dd0d261`
 
