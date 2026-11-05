@@ -1,0 +1,26 @@
+[project]
+name = "fat-workout-tracker"
+version = "2.0.0"
+description = "A local-first workout tracker with a Flask API and Vue 3 interface."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1.0",
+    "flask-cors>=5.0.0",
+    "flask-sqlalchemy>=3.1.1",
+    "sqlalchemy>=2.0.36",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["backend"]
