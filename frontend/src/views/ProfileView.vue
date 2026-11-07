@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue3-toastify'
 import EmptyState from '@/components/EmptyState.vue'
 import Icon from '@/components/Icon.vue'
+import ChangePasswordModal from '@/components/ChangePasswordModal.vue'
 import MeasurementModal from '@/components/MeasurementModal.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import ProfileEditModal from '@/components/ProfileEditModal.vue'
@@ -55,6 +56,7 @@ const selectedMetric = ref('weight')
 const selectedPeriod = ref('all')
 const editModalOpen = ref(false)
 const measurementModalOpen = ref(false)
+const passwordModalOpen = ref(false)
 const showAllMeasurements = ref(false)
 
 const user = computed(() => profile.value?.user || null)
@@ -279,12 +281,16 @@ onMounted(async () => {
     <PageHeader
       eyebrow="Athlete profile"
       title="Profile"
-      description="Your local identity and body measurement record. Snapshots are append-only and BMI is only derived from values recorded together."
+      description="Your account and body measurement record. Workouts and snapshots are private to your account, and BMI is only derived from values recorded together."
     >
       <template #actions>
         <button class="btn btn-secondary" type="button" @click="editModalOpen = true">
           <Icon name="edit" :size="16" />
           Edit profile
+        </button>
+        <button class="btn btn-secondary" type="button" @click="passwordModalOpen = true">
+          <Icon name="key" :size="16" />
+          Password
         </button>
         <button class="btn btn-primary" type="button" @click="measurementModalOpen = true">
           <Icon name="plus" :size="16" />
@@ -319,10 +325,13 @@ onMounted(async () => {
         <div class="hero-main">
           <div class="hero-title">
             <h2>{{ user.name }}</h2>
-            <span class="badge badge-accent">Local profile</span>
+            <span class="badge badge-accent">
+              {{ user.role === 'admin' ? 'Administrator' : 'Member' }}
+            </span>
           </div>
           <p class="hero-subtitle">
-            Single-user tracking on this server. No account, no cloud sync — just your records.
+            @{{ user.username }} · Your workouts, measurements and progress are private to
+            this account.
           </p>
           <div class="hero-meta">
             <span class="chip">
@@ -574,6 +583,8 @@ onMounted(async () => {
       @close="editModalOpen = false"
       @saved="handleProfileSaved"
     />
+
+    <ChangePasswordModal :open="passwordModalOpen" @close="passwordModalOpen = false" />
 
     <MeasurementModal
       :open="measurementModalOpen"

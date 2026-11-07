@@ -14,6 +14,7 @@ def _catalogue():
 
 def _add(workout_date, exercise_id, equipment_id, weight, complete, partial=0, rir=2):
     return workout_service.add_set(
+        1,
         workout_date,
         exercise_id,
         equipment_id,
@@ -39,6 +40,7 @@ def _seed_workouts():
 def test_exercise_metrics_use_actual_sets(ctx):
     exercises, _, start, today = _seed_workouts()
     report = analytics_service.build_report(
+        1,
         "all",
         exercise_id=exercises["Barbell Back Squat"],
         anchor=today,
@@ -56,6 +58,7 @@ def test_exercise_metrics_use_actual_sets(ctx):
 def test_primary_volume_is_full_and_secondary_is_half(ctx):
     exercises, _, _, today = _seed_workouts()
     report = analytics_service.build_report(
+        1,
         "all",
         exercise_id=exercises["Barbell Back Squat"],
         anchor=today,
@@ -75,6 +78,7 @@ def test_primary_volume_is_full_and_secondary_is_half(ctx):
 def test_muscle_filter_applies_to_all_metrics(ctx):
     exercises, muscles, _, today = _seed_workouts()
     report = analytics_service.build_report(
+        1,
         "all",
         muscle_group_id=muscles["Chest"],
         anchor=today,
@@ -87,7 +91,7 @@ def test_muscle_filter_applies_to_all_metrics(ctx):
 
 def test_weekly_volume_uses_monday_and_omits_empty_weeks(ctx):
     _, _, start, today = _seed_workouts()
-    report = analytics_service.build_report("all", anchor=today)
+    report = analytics_service.build_report(1, "all", anchor=today)
     assert len(report["weekly_volume"]) == 2
     assert report["weekly_volume"][0]["date"] == week_start(start).isoformat()
     assert report["weekly_volume"][1]["date"] == week_start(
@@ -99,7 +103,7 @@ def test_weekly_volume_uses_monday_and_omits_empty_weeks(ctx):
 
 def test_period_and_custom_range_filter_records(ctx):
     _, _, start, today = _seed_workouts()
-    recent = analytics_service.build_report("7", anchor=today)
+    recent = analytics_service.build_report(1, "7", anchor=today)
     # Only records within the inclusive seven-day window count.
     assert all(
         point["date"] >= (today - timedelta(days=6)).isoformat()
@@ -107,6 +111,7 @@ def test_period_and_custom_range_filter_records(ctx):
     )
 
     custom = analytics_service.build_report(
+        1,
         "custom",
         start=start,
         end=start,
@@ -120,6 +125,7 @@ def test_period_and_custom_range_filter_records(ctx):
 def test_empty_period_has_no_synthetic_points(ctx):
     today = today_local()
     report = analytics_service.build_report(
+        1,
         "custom",
         start=today - timedelta(days=60),
         end=today - timedelta(days=50),
@@ -136,6 +142,7 @@ def test_rir_trend_ignores_missing_rir(ctx):
     exercises, _, _, today = _seed_workouts()
     _add(today - timedelta(days=2), exercises["Barbell Back Squat"], 2, 90, 5, rir=None)
     report = analytics_service.build_report(
+        1,
         "all",
         exercise_id=exercises["Barbell Back Squat"],
         anchor=today,

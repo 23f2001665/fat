@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
+from ..auth import current_user
 from ..dates import parse_date, today_local
 from ..serializers import serialize_day, serialize_set
 from ..services import workout_service
@@ -21,25 +22,34 @@ bp = Blueprint("workouts", __name__)
 def workout_day():
     raw_date = request.args.get("date")
     workout_date = parse_date(raw_date, "Date") if raw_date else today_local()
-    sets = workout_service.workout_for_date(workout_date)
+    sets = workout_service.workout_for_date(current_user().id, workout_date)
     return jsonify(serialize_day(workout_date, sets))
 
 
 @bp.get("/workouts/history")
 def workout_history():
-    return jsonify({"days": workout_service.history()})
+    return jsonify({"days": workout_service.history(current_user().id)})
 
 
 @bp.get("/workouts/<date_value>/<int:sequence_number>")
 def workout_set(date_value: str, sequence_number: int):
     workout_date = parse_date(date_value, "Date")
-    return jsonify({"set": serialize_set(workout_service.get_set(workout_date, sequence_number))})
+    return jsonify(
+        {
+            "set": serialize_set(
+                workout_service.get_set(
+                    current_user().id, workout_date, sequence_number
+                )
+            )
+        }
+    )
 
 
 @bp.post("/workouts")
 def add_workout_set():
     data = json_object()
     workout_set = workout_service.add_set(
+        user_id=current_user().id,
         workout_date=payload_date(data),
         exercise_id=payload_int(data, "exercise_id", "Exercise"),
         equipment_id=payload_int(data, "equipment_id", "Equipment"),
@@ -65,6 +75,7 @@ def add_workout_set():
 def update_workout_set(date_value: str, sequence_number: int):
     data = json_object()
     workout_set = workout_service.update_set(
+        user_id=current_user().id,
         workout_date=parse_date(date_value, "Date"),
         sequence_number=sequence_number,
         exercise_id=payload_int(data, "exercise_id", "Exercise"),
@@ -81,5 +92,7 @@ def update_workout_set(date_value: str, sequence_number: int):
 
 @bp.delete("/workouts/<date_value>/<int:sequence_number>")
 def delete_workout_set(date_value: str, sequence_number: int):
-    workout_service.delete_set(parse_date(date_value, "Date"), sequence_number)
+    workout_service.delete_set(
+        current_user().id, parse_date(date_value, "Date"), sequence_number
+    )
     return jsonify({"message": "Set deleted"})

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
+from ..auth import admin_required
 from ..serializers import (
     serialize_equipment,
     serialize_exercise,
@@ -30,6 +31,7 @@ def get_exercise(exercise_id: int):
 
 
 @bp.post("/library/exercises")
+@admin_required
 def create_exercise():
     data = json_object()
     exercise = library_service.create_exercise(
@@ -42,6 +44,7 @@ def create_exercise():
 
 
 @bp.put("/library/exercises/<int:exercise_id>")
+@admin_required
 def update_exercise(exercise_id: int):
     data = json_object()
     exercise = library_service.update_exercise(
@@ -56,6 +59,7 @@ def update_exercise(exercise_id: int):
 
 
 @bp.patch("/library/exercises/<int:exercise_id>/active")
+@admin_required
 def set_exercise_active(exercise_id: int):
     data = json_object()
     exercise = library_service.set_exercise_active(exercise_id, data.get("is_active"))
@@ -76,6 +80,7 @@ def get_muscle_group(muscle_group_id: int):
 
 
 @bp.post("/library/muscle-groups")
+@admin_required
 def create_muscle_group():
     data = json_object()
     muscle = library_service.create_muscle_group(data.get("name"), data.get("description"))
@@ -83,6 +88,7 @@ def create_muscle_group():
 
 
 @bp.put("/library/muscle-groups/<int:muscle_group_id>")
+@admin_required
 def update_muscle_group(muscle_group_id: int):
     data = json_object()
     muscle = library_service.update_muscle_group(
@@ -95,6 +101,7 @@ def update_muscle_group(muscle_group_id: int):
 
 
 @bp.patch("/library/muscle-groups/<int:muscle_group_id>/active")
+@admin_required
 def set_muscle_group_active(muscle_group_id: int):
     data = json_object()
     muscle = library_service.set_muscle_group_active(muscle_group_id, data.get("is_active"))
@@ -113,6 +120,7 @@ def get_equipment(equipment_id: int):
 
 
 @bp.post("/library/equipment")
+@admin_required
 def create_equipment():
     data = json_object()
     equipment = library_service.create_equipment(data.get("name"), data.get("category"))
@@ -120,6 +128,7 @@ def create_equipment():
 
 
 @bp.put("/library/equipment/<int:equipment_id>")
+@admin_required
 def update_equipment(equipment_id: int):
     data = json_object()
     equipment = library_service.update_equipment(
@@ -132,6 +141,7 @@ def update_equipment(equipment_id: int):
 
 
 @bp.patch("/library/equipment/<int:equipment_id>/active")
+@admin_required
 def set_equipment_active(equipment_id: int):
     data = json_object()
     equipment = library_service.set_equipment_active(equipment_id, data.get("is_active"))

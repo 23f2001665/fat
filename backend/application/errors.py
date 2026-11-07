@@ -25,3 +25,11 @@ class ApiError(Exception):
     @classmethod
     def conflict(cls, message: str) -> "ApiError":
         return cls(message, 409, "conflict")
+
+    @classmethod
+    def unauthorized(cls, message: str = "Sign in to continue") -> "ApiError":
+        return cls(message, 401, "authentication_required")
+
+    @classmethod
+    def forbidden(cls, message: str = "You do not have permission to do that") -> "ApiError":
+        return cls(message, 403, "forbidden")

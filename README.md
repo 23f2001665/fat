@@ -30,8 +30,16 @@ branch replaces it at the repository root with this Flask + Vue application.
   volume, secondary muscles receive 50%.
 - **Real observations only.** Charts and reports never interpolate or synthesize
   missing dates.
-- **Local-first.** There is no account system; one local athlete profile is
-  seeded. Data lives in SQLite on the machine serving the app.
+- **Accounts and roles.** Session-based sign-in with `admin` and `user` roles.
+  Every workout, body measurement, history view, and analytics report is scoped
+  to the signed-in account.
+- **Admin-managed library.** Administrators create and maintain exercises,
+  muscle groups, and equipment. Members have read-only access to the shared
+  catalogue.
+- **Account administration.** Administrators can create accounts, reset
+  passwords, change roles, and deactivate users without deleting their history.
+- **Local-first storage.** Data lives in SQLite on the machine serving the app.
+  Passwords are hashed with Werkzeug and sessions use an HTTP-only cookie.
 
 ## Screens
 
@@ -40,9 +48,43 @@ branch replaces it at the repository root with this Flask + Vue application.
    and exercise names.
 3. **Analytics** — period and custom-range filters, exercise/muscle filters,
    summary metrics, and custom SVG/CSS charts.
-4. **Library** — exercises, muscle groups, and equipment management.
-5. **Profile** — user details, latest metrics, comparisons, measurement trends,
-   and append-only snapshot history.
+4. **Library** — exercises, muscle groups, and equipment. Administrators manage
+   the catalogue; members browse it read-only.
+5. **Profile** — account details, password change, latest metrics, comparisons,
+   measurement trends, and append-only snapshot history.
+6. **Users** *(administrators only)* — account creation, roles, password resets,
+   and activation/deactivation.
+
+## Accounts and roles
+
+Two accounts are seeded when they are missing:
+
+| Username | Default password | Role |
+| --- | --- | --- |
+| `admin` | `admin123` | Administrator |
+| `athlete` | `athlete123` | Member |
+
+Change these defaults, especially before exposing the app through a tunnel:
+
+```bash
+export FAT_ADMIN_USERNAME=admin
+export FAT_ADMIN_PASSWORD='a-long-unique-password'
+export FAT_USER_USERNAME=athlete
+export FAT_USER_PASSWORD='another-long-password'
+```
+
+Seeding only creates accounts that do not exist. It never renames an existing
+account or resets a live password on restart.
+
+- **Administrators** can manage the shared exercise library and the user list.
+  They also keep their own private workouts and measurements.
+- **Members** can sign in, log their own sets and body measurements, and view
+  their own history and analytics. They cannot change the shared library or
+  manage accounts.
+- Accounts are deactivated rather than deleted, preserving all historical rows.
+  At least one active administrator must remain.
+- Signed-in users can change their password from the Profile screen. An
+  administrator can reset a password from the Users screen.
 
 ## Stack
 
@@ -112,6 +154,20 @@ Open <http://127.0.0.1:5000>.
 `FAT_HOST` and `FAT_PORT` control the bind address. For a directly reachable
 server (not a tunnel), use `FAT_HOST=0.0.0.0`.
 
+### Session configuration
+
+Set a strong, stable `SECRET_KEY` so sessions survive restarts and cannot be
+forged:
+
+```bash
+export SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+```
+
+When the app is served over HTTPS (for example through a Cloudflare tunnel), set
+`FAT_COOKIE_SECURE=1` so the session cookie is marked `Secure`. Leave it unset
+for plain `http://127.0.0.1` development, otherwise the browser will not send the
+cookie over HTTP. Sessions are HTTP-only and `SameSite=Lax` by default.
+
 ## Cloudflare Tunnel
 
 `cloudflared` quick tunnels are the fastest way to expose a local instance. The
@@ -131,8 +187,10 @@ it is not already healthy, and opens the tunnel:
 ```
 
 The `https://<random>.trycloudflare.com` address is printed by `cloudflared`.
-Share that URL to access the tracker. Quick tunnels expose the app publicly to
-anyone with the link, so treat the URL as a secret while it is active.
+Share that URL only with people who should have an account: the login page is
+public, but workout data requires signing in. Quick tunnels expose the app
+publicly to anyone with the link, so treat the URL as a secret while it is
+active and use strong account passwords.
 
 For a stable hostname, configure a named Cloudflare Tunnel and point its public
 hostname at `http://127.0.0.1:5000`. Named tunnels use your Cloudflare account's
@@ -152,9 +210,16 @@ Override it with `DATABASE_URL`, for example:
 DATABASE_URL=sqlite:////tmp/fat-demo.db uv run python -m backend.app
 ```
 
-The schema and seed catalogue are created automatically on first start. Seed
-markers keep the predefined exercises, muscle groups, and equipment from being
-recreated after the user renames or deactivates them.
+The schema, seed catalogue, and default accounts are created automatically on
+first start. Seed markers keep the predefined exercises, muscle groups, and
+equipment from being recreated after an administrator renames or deactivates
+them.
+
+Databases created before role-based accounts are migrated in place on startup:
+the existing profile becomes the administrator account (`id` `1`), legacy
+workout rows are assigned to it, and the authentication columns and per-user
+workout key are added without deleting history. Back up the database file before
+upgrading production data.
 
 To reset the local database during development (this deletes all logged data):
 
@@ -174,8 +239,9 @@ Back up the file instead of deleting it if you want to keep your history.
 - Rest is optional and must be non-negative.
 - A set must contain at least one complete or partial rep.
 - Workout dates cannot be in the future and must be on or after `1900-01-01`.
-- Sets are ordered by `(date, sequence_number)`; sequence numbers are allocated
-  per day and never reused or renumbered after deletion.
+- Sets are ordered by `(user_id, date, sequence_number)`; sequence numbers are
+  allocated per account and per day and never reused or renumbered after
+  deletion.
 - Primary muscle volume is attributed at `100%`; secondary at `50%`. The two
   components remain separate in analytics data.
 - Body measurements are append-only. The latest value for each metric is
@@ -195,7 +261,9 @@ uv run pytest
 
 The suite covers calculations, sequence allocation and deletion, validation,
 library guard rails, reserved equipment protection, measurement snapshots and
-BMI rules, analytics attribution, weekly grouping, filters, and empty ranges.
+BMI rules, analytics attribution, weekly grouping, filters, empty ranges,
+session authentication, role-based access, per-user isolation, account
+management, and in-place migration of pre-RBAC databases.
 
 ## API overview
 
@@ -204,28 +272,40 @@ All API routes are under `/api` and return JSON.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/health` | Health check |
+| `POST` | `/api/auth/login` | Sign in and open a session |
+| `POST` | `/api/auth/logout` | End the current session |
+| `GET` | `/api/auth/me` | Current signed-in user |
+| `PUT` | `/api/auth/password` | Change the current password |
+| `GET` | `/api/admin/users` | List accounts (administrators only) |
+| `POST` | `/api/admin/users` | Create an account (administrators only) |
+| `PUT` | `/api/admin/users/<id>` | Update role, password, or active state |
 | `GET` | `/api/workouts?date=YYYY-MM-DD` | Workout day and its sets |
 | `GET` | `/api/workouts/history` | Workout day summaries |
 | `POST` | `/api/workouts` | Add a set |
 | `PUT` | `/api/workouts/<date>/<sequence>` | Update a set |
 | `DELETE` | `/api/workouts/<date>/<sequence>` | Delete a set |
 | `GET` | `/api/library/exercises` | Exercise catalogue |
-| `POST` | `/api/library/exercises` | Create an exercise |
-| `PUT` | `/api/library/exercises/<id>` | Update an exercise |
-| `PATCH` | `/api/library/exercises/<id>/active` | Activate/deactivate |
+| `POST` | `/api/library/exercises` | Create an exercise (administrators only) |
+| `PUT` | `/api/library/exercises/<id>` | Update an exercise (administrators only) |
+| `PATCH` | `/api/library/exercises/<id>/active` | Activate/deactivate (administrators only) |
 | `GET` | `/api/library/muscle-groups` | Muscle groups |
-| `POST` | `/api/library/muscle-groups` | Create a muscle group |
-| `PUT` | `/api/library/muscle-groups/<id>` | Update a muscle group |
-| `PATCH` | `/api/library/muscle-groups/<id>/active` | Activate/deactivate |
+| `POST` | `/api/library/muscle-groups` | Create a muscle group (administrators only) |
+| `PUT` | `/api/library/muscle-groups/<id>` | Update a muscle group (administrators only) |
+| `PATCH` | `/api/library/muscle-groups/<id>/active` | Activate/deactivate (administrators only) |
 | `GET` | `/api/library/equipment` | Equipment catalogue |
-| `POST` | `/api/library/equipment` | Create equipment |
-| `PUT` | `/api/library/equipment/<id>` | Update equipment |
-| `PATCH` | `/api/library/equipment/<id>/active` | Activate/deactivate |
+| `POST` | `/api/library/equipment` | Create equipment (administrators only) |
+| `PUT` | `/api/library/equipment/<id>` | Update equipment (administrators only) |
+| `PATCH` | `/api/library/equipment/<id>/active` | Activate/deactivate (administrators only) |
 | `GET` | `/api/profile` | Profile, latest metrics, comparisons, snapshots |
-| `PUT` | `/api/profile` | Update the local profile |
+| `PUT` | `/api/profile` | Update the signed-in profile |
 | `POST` | `/api/profile/measurements` | Append a measurement snapshot |
 | `GET` | `/api/profile/series?metric=weight&period=all` | Measurement trend |
-| `GET` | `/api/analytics?period=30` | Analytics report |
+| `GET` | `/api/analytics?period=30` | Analytics report for the signed-in user |
+
+All routes except `/api/health`, `/api/auth/login`, and `/api/auth/logout`
+require an authenticated session cookie. Admin-only routes return `403` for
+members. Workout, measurement, history, and analytics responses only contain
+the signed-in account's records.
 
 Library list endpoints accept `include_inactive=true` and `search=...`.
 Analytics accepts `period=7|30|90|6m|12m|all|custom`, `start`, `end`,
@@ -239,21 +319,23 @@ backend/
   config.py                  Runtime configuration
   application/
     __init__.py              App factory, SPA serving, error handling
+    auth.py                  Session loading and role guards
     models.py                SQLAlchemy schema and constraints
-    bootstrap.py             Schema creation, triggers, seed bootstrap
-    data_seed.py             Predefined catalogue and local user
+    bootstrap.py             Schema creation, migrations, triggers, seed bootstrap
+    data_seed.py             Predefined catalogue and default accounts
     calculations.py          Effective reps, volume, BMI
-    services/                Workout, library, profile, analytics logic
-    routes/                  JSON API blueprints
+    services/                Workout, library, profile, analytics, auth logic
+    routes/                  JSON API blueprints (auth, users, workouts, library, profile, analytics)
 frontend/
   src/
     api/                     Axios API modules
     components/              Shared UI, modals, custom charts
     layouts/                 Desktop sidebar and mobile navigation
-    views/                   Workout, History, Analytics, Library, Profile
+    stores/auth.js           Client-side account state and actions
+    views/                   Login, Workout, History, Analytics, Library, Profile, Users
     assets/theme.css         Design tokens and shared styles
   vite.config.js             Dev proxy and build configuration
-tests/                       Pytest domain and API tests
+tests/                       Pytest domain, API, auth, and migration tests
 devstack.sh                  Start Flask + Vite together
 scripts/tunnel.sh            Start/build the app and open a quick tunnel
 ```

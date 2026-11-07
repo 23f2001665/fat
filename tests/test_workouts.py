@@ -174,7 +174,7 @@ def test_workout_service_rejects_unreasonable_weight(ctx):
     exercises = _exercise_ids()
     try:
         workout_service.add_set(
-            today_local(), exercises["Bench Press"], 2, 2001, 5, 0
+            1, today_local(), exercises["Bench Press"], 2, 2001, 5, 0
         )
     except ApiError as error:
         assert error.status_code == 400

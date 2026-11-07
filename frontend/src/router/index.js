@@ -1,8 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { authState, clearAuth, fetchCurrentUser } from '@/stores/auth'
 
 const MainLayout = () => import('@/layouts/MainLayout.vue')
 
 const routes = [
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('@/views/LoginView.vue'),
+    meta: { title: 'Sign in' },
+  },
   {
     path: '/',
     component: MainLayout,
@@ -41,6 +48,12 @@ const routes = [
         component: () => import('@/views/ProfileView.vue'),
         meta: { title: 'Profile' },
       },
+      {
+        path: 'users',
+        name: 'users',
+        component: () => import('@/views/UsersView.vue'),
+        meta: { title: 'Users', admin: true },
+      },
     ],
   },
   {
@@ -55,6 +68,37 @@ const router = createRouter({
   scrollBehavior() {
     return { top: 0, behavior: 'smooth' }
   },
+})
+
+router.beforeEach(async (to) => {
+  if (!authState.loaded) {
+    try {
+      await fetchCurrentUser()
+    } catch {
+      clearAuth()
+    }
+  }
+
+  if (to.name === 'login') {
+    if (authState.user) {
+      const redirect =
+        typeof to.query.redirect === 'string' && to.query.redirect.startsWith('/')
+          ? to.query.redirect
+          : '/workout'
+      return redirect
+    }
+    return true
+  }
+
+  if (!authState.user) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.admin && authState.user.role !== 'admin') {
+    return { name: 'workout' }
+  }
+
+  return true
 })
 
 router.afterEach((to) => {

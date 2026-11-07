@@ -12,56 +12,56 @@ from backend.application.services import profile_service
 
 def test_bmi_uses_values_from_the_same_measurement_snapshot(ctx):
     today = today_local()
-    profile_service.add_measurement(today - timedelta(days=30), weight_kg=80)
-    profile_service.add_measurement(today - timedelta(days=20), height_cm=180)
-    metrics = profile_service.latest_metrics()
+    profile_service.add_measurement(1, today - timedelta(days=30), weight_kg=80)
+    profile_service.add_measurement(1, today - timedelta(days=20), height_cm=180)
+    metrics = profile_service.latest_metrics(1)
     assert metrics["weight_kg"] == 80
     assert metrics["height_cm"] == 180
     assert metrics["bmi"] is None
 
     latest_date = today - timedelta(days=10)
-    profile_service.add_measurement(latest_date, weight_kg=75, height_cm=180)
-    metrics = profile_service.latest_metrics()
+    profile_service.add_measurement(1, latest_date, weight_kg=75, height_cm=180)
+    metrics = profile_service.latest_metrics(1)
     assert metrics["bmi"] == bmi(75, 180)
     assert metrics["bmi_measured_at"] == latest_date.isoformat()
 
 
 def test_measurements_are_append_only_and_partial_snapshots_are_allowed(ctx):
     today = today_local()
-    profile_service.add_measurement(today - timedelta(days=2), weight_kg=80)
-    profile_service.add_measurement(today - timedelta(days=1), waist_cm=82)
-    profile_service.update_profile("Alex", 180, None)
+    profile_service.add_measurement(1, today - timedelta(days=2), weight_kg=80)
+    profile_service.add_measurement(1, today - timedelta(days=1), waist_cm=82)
+    profile_service.update_profile(1, "Alex", 180, None)
 
-    history = profile_service.measurement_history()
+    history = profile_service.measurement_history(1)
     assert len(history) == 2
     assert history[0].waist_cm == 82
     assert history[1].weight_kg == 80
-    metrics = profile_service.latest_metrics()
+    metrics = profile_service.latest_metrics(1)
     assert metrics["weight_kg"] == 80
     assert metrics["waist_cm"] == 82
-    assert profile_service.get_local_user().height_cm == 180
+    assert profile_service.get_user(1).height_cm == 180
 
 
 def test_empty_and_invalid_measurements_are_rejected(ctx):
     today = today_local()
     with pytest.raises(ApiError):
-        profile_service.add_measurement(today)
+        profile_service.add_measurement(1, today)
     with pytest.raises(ApiError):
-        profile_service.add_measurement(today, body_fat_percentage=101)
+        profile_service.add_measurement(1, today, body_fat_percentage=101)
     with pytest.raises(ApiError):
-        profile_service.add_measurement(today + timedelta(days=1), weight_kg=70)
+        profile_service.add_measurement(1, today + timedelta(days=1), weight_kg=70)
     with pytest.raises(ApiError):
-        profile_service.add_measurement(today, waist_cm=501)
+        profile_service.add_measurement(1, today, waist_cm=501)
     with pytest.raises(ApiError):
-        profile_service.add_measurement(today, weight_kg=0)
+        profile_service.add_measurement(1, today, weight_kg=0)
 
 
 def test_comparisons_use_latest_and_previous_observation_per_metric(ctx):
     today = today_local()
-    profile_service.add_measurement(today - timedelta(days=20), weight_kg=80, arm_cm=35)
-    profile_service.add_measurement(today - timedelta(days=10), weight_kg=79)
-    profile_service.add_measurement(today - timedelta(days=5), arm_cm=35.5)
-    comparisons = {row["metric"]: row for row in profile_service.comparisons()}
+    profile_service.add_measurement(1, today - timedelta(days=20), weight_kg=80, arm_cm=35)
+    profile_service.add_measurement(1, today - timedelta(days=10), weight_kg=79)
+    profile_service.add_measurement(1, today - timedelta(days=5), arm_cm=35.5)
+    comparisons = {row["metric"]: row for row in profile_service.comparisons(1)}
     assert comparisons["weight"]["current"] == 79
     assert comparisons["weight"]["previous"] == 80
     assert comparisons["weight"]["delta"] == -1
@@ -71,19 +71,19 @@ def test_comparisons_use_latest_and_previous_observation_per_metric(ctx):
 
 def test_metric_series_contains_actual_dates_only(ctx):
     today = today_local()
-    profile_service.add_measurement(today - timedelta(days=8), weight_kg=80)
-    profile_service.add_measurement(today - timedelta(days=4), weight_kg=79)
-    profile_service.add_measurement(today - timedelta(days=1), height_cm=180)
+    profile_service.add_measurement(1, today - timedelta(days=8), weight_kg=80)
+    profile_service.add_measurement(1, today - timedelta(days=4), weight_kg=79)
+    profile_service.add_measurement(1, today - timedelta(days=1), height_cm=180)
 
     from backend.application.dates import DateRange
 
-    points = profile_service.metric_series("weight", DateRange())
+    points = profile_service.metric_series(1, "weight", DateRange())
     assert [row["value"] for row in points] == [80, 79]
     assert [row["date"] for row in points] == [
         (today - timedelta(days=8)).isoformat(),
         (today - timedelta(days=4)).isoformat(),
     ]
-    assert profile_service.metric_series("bmi", DateRange()) == []
+    assert profile_service.metric_series(1, "bmi", DateRange()) == []
 
 
 def test_profile_api_does_not_create_measurement(client):

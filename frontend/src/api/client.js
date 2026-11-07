@@ -19,6 +19,14 @@ client.interceptors.response.use(
           ? 'The server could not be reached.'
           : error.message)
     error.userMessage = message
+    const url = error.config?.url || ''
+    if (
+      error.response?.status === 401 &&
+      !url.startsWith('/auth/') &&
+      typeof window !== 'undefined'
+    ) {
+      window.dispatchEvent(new Event('fat:unauthorized'))
+    }
     return Promise.reject(error)
   },
 )

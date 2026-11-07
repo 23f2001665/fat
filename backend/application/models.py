@@ -13,15 +13,27 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
+    username = db.Column(db.String(64), nullable=False, unique=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(16), nullable=False, default="user", server_default="user")
+    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default="1")
     height_cm = db.Column(db.Float, nullable=True)
     date_of_birth = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.String(64), nullable=False)
     updated_at = db.Column(db.String(64), nullable=False)
 
     measurements = relationship("BodyMeasurement", back_populates="user")
+    workout_logs = relationship("WorkoutLog", back_populates="user")
 
     __table_args__ = (
         CheckConstraint("height_cm IS NULL OR height_cm > 0", name="user_height_positive"),
+        CheckConstraint("role IN ('admin', 'user')", name="user_role_valid"),
+        CheckConstraint("is_active IN (0, 1)", name="user_active_boolean"),
+        Index(
+            "users_username_nocase",
+            func.lower(func.trim(username)),
+            unique=True,
+        ),
     )
 
 
@@ -118,6 +130,11 @@ class ExerciseMuscle(db.Model):
 class WorkoutLog(db.Model):
     __tablename__ = "workout_logs"
 
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
     date = db.Column(db.Date, primary_key=True)
     sequence_number = db.Column(db.Integer, primary_key=True)
     exercise_id = db.Column(
@@ -137,6 +154,7 @@ class WorkoutLog(db.Model):
     rir = db.Column(db.Integer, nullable=True)
     extra_info = db.Column(db.Text, nullable=True)
 
+    user = relationship("User", back_populates="workout_logs")
     exercise = relationship("Exercise", back_populates="workout_logs")
     equipment = relationship("Equipment", back_populates="workout_logs")
 
@@ -156,6 +174,7 @@ class WorkoutLog(db.Model):
             "rir IS NULL OR (rir >= 0 AND rir <= 10)",
             name="workout_rir_range",
         ),
+        Index("workout_logs_user_date_idx", "user_id", "date"),
         Index("workout_logs_exercise_idx", "exercise_id"),
         Index("workout_logs_equipment_idx", "equipment_id"),
         Index("workout_logs_date_idx", "date"),

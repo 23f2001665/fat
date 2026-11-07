@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import sqlite3
 
-from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
 
 db = SQLAlchemy()
-cors = CORS()
 
 
 @event.listens_for(Engine, "connect")

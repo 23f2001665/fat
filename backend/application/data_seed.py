@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from flask import current_app
 from sqlalchemy import func
 
 from ..extensions import db
 from .dates import now_timestamp
+from .errors import ApiError
 from .models import (
     AppMetadata,
     Equipment,
@@ -12,6 +14,7 @@ from .models import (
     MuscleGroup,
     User,
 )
+from .services import auth_service
 from .text import normalize_name
 
 
@@ -129,7 +132,6 @@ EXERCISES: list[tuple[str, str, list[tuple[str, str]]]] = [
 M_KEY = "seed.muscle_groups.v1"
 E_KEY = "seed.equipment.v1"
 X_KEY = "seed.exercises.v1"
-U_KEY = "seed.local_user.v1"
 
 
 def _marker_present(key: str) -> bool:
@@ -179,8 +181,52 @@ def ensure_reserved_equipment() -> None:
         raise RuntimeError("The reserved 'No Equipment' record must stay active")
 
 
+def _configured_user(prefix: str, name: str, role: str) -> User:
+    username_value = current_app.config.get(f"{prefix}_USERNAME")
+    password_value = current_app.config.get(f"{prefix}_PASSWORD")
+    try:
+        username = auth_service.normalize_username(username_value)
+        auth_service.validate_password(password_value)
+    except ApiError as error:
+        raise RuntimeError(f"Invalid {prefix.lower()} credentials: {error.message}") from error
+
+    existing = auth_service.find_by_username(username)
+    if existing is not None:
+        return existing
+
+    now = now_timestamp()
+    user = User(
+        name=name,
+        username=username,
+        password_hash=auth_service.password_hash(password_value),
+        role=role,
+        is_active=True,
+        created_at=now,
+        updated_at=now,
+    )
+    db.session.add(user)
+    db.session.flush()
+    return user
+
+
+def seed_users() -> None:
+    """Create the administrator and normal-user accounts when they are missing.
+
+    Existing accounts are never renamed or have their passwords reset, so a
+    changed environment variable cannot silently overwrite a live password.
+    """
+
+    admin = _configured_user("ADMIN", "Administrator", "admin")
+    default_user = _configured_user("DEFAULT", "Athlete", "user")
+    if admin.id == default_user.id:
+        raise RuntimeError(
+            "FAT_ADMIN_USERNAME and FAT_USER_USERNAME must be different"
+        )
+    db.session.commit()
+
+
 def seed_database() -> None:
-    """Insert the predefined catalogue and local user exactly once per marker."""
+    """Insert the predefined catalogue and accounts when they are missing."""
 
     ensure_reserved_equipment()
 
@@ -234,19 +280,6 @@ def seed_database() -> None:
         db.session.flush()
         _set_marker(X_KEY)
 
-    if not _marker_present(U_KEY):
-        if db.session.get(User, 1) is None:
-            now = now_timestamp()
-            db.session.add(
-                User(
-                    id=1,
-                    name="Athlete",
-                    height_cm=None,
-                    date_of_birth=None,
-                    created_at=now,
-                    updated_at=now,
-                )
-            )
-        _set_marker(U_KEY)
+    seed_users()
 
     db.session.commit()

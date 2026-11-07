@@ -88,7 +88,7 @@ async function submit() {
   <BaseModal
     :open="open"
     title="Edit profile"
-    subtitle="Local athlete"
+    subtitle="Your account"
     size="sm"
     @close="emit('close')"
   >

@@ -12,7 +12,8 @@ from ..models import Exercise, MuscleGroup
 
 
 SET_FILTER = """
-    (:start_date IS NULL OR w.date >= :start_date)
+    w.user_id = :user_id
+    AND (:start_date IS NULL OR w.date >= :start_date)
     AND (:end_date IS NULL OR w.date <= :end_date)
     AND (:exercise_id IS NULL OR w.exercise_id = :exercise_id)
     AND (:muscle_group_id IS NULL OR EXISTS (
@@ -24,11 +25,13 @@ SET_FILTER = """
 
 
 def _params(
+    user_id: int,
     date_range: DateRange,
     exercise_id: int | None,
     muscle_group_id: int | None,
 ) -> dict:
     return {
+        "user_id": user_id,
         "start_date": format_date(date_range.start) if date_range.start else None,
         "end_date": format_date(date_range.end) if date_range.end else None,
         "exercise_id": exercise_id,
@@ -36,7 +39,7 @@ def _params(
     }
 
 
-def _summary(date_range: DateRange, exercise_id, muscle_group_id) -> dict:
+def _summary(user_id: int, date_range: DateRange, exercise_id, muscle_group_id) -> dict:
     row = db.session.execute(
         text(
             f"""
@@ -57,7 +60,7 @@ def _summary(date_range: DateRange, exercise_id, muscle_group_id) -> dict:
             FROM sets
             """
         ),
-        _params(date_range, exercise_id, muscle_group_id),
+        _params(user_id, date_range, exercise_id, muscle_group_id),
     ).one()
     return {
         "total_sets": int(row[0]),
@@ -69,7 +72,7 @@ def _summary(date_range: DateRange, exercise_id, muscle_group_id) -> dict:
     }
 
 
-def _per_date(date_range: DateRange, exercise_id, muscle_group_id) -> list[dict]:
+def _per_date(user_id: int, date_range: DateRange, exercise_id, muscle_group_id) -> list[dict]:
     rows = db.session.execute(
         text(
             f"""
@@ -83,7 +86,7 @@ def _per_date(date_range: DateRange, exercise_id, muscle_group_id) -> list[dict]
             ORDER BY w.date ASC
             """
         ),
-        _params(date_range, exercise_id, muscle_group_id),
+        _params(user_id, date_range, exercise_id, muscle_group_id),
     ).all()
     return [
         {
@@ -96,7 +99,7 @@ def _per_date(date_range: DateRange, exercise_id, muscle_group_id) -> list[dict]
     ]
 
 
-def _muscle_groups(date_range: DateRange, exercise_id, muscle_group_id) -> list[dict]:
+def _muscle_groups(user_id: int, date_range: DateRange, exercise_id, muscle_group_id) -> list[dict]:
     rows = db.session.execute(
         text(
             f"""
@@ -120,7 +123,7 @@ def _muscle_groups(date_range: DateRange, exercise_id, muscle_group_id) -> list[
             ORDER BY (primary_sets + secondary_sets) DESC, mg.name COLLATE NOCASE
             """
         ),
-        _params(date_range, exercise_id, muscle_group_id),
+        _params(user_id, date_range, exercise_id, muscle_group_id),
     ).all()
     return [
         {
@@ -137,7 +140,7 @@ def _muscle_groups(date_range: DateRange, exercise_id, muscle_group_id) -> list[
     ]
 
 
-def _exercise_frequency(date_range: DateRange, exercise_id, muscle_group_id) -> list[dict]:
+def _exercise_frequency(user_id: int, date_range: DateRange, exercise_id, muscle_group_id) -> list[dict]:
     rows = db.session.execute(
         text(
             f"""
@@ -149,12 +152,13 @@ def _exercise_frequency(date_range: DateRange, exercise_id, muscle_group_id) -> 
             ORDER BY COUNT(*) DESC, e.name COLLATE NOCASE
             """
         ),
-        _params(date_range, exercise_id, muscle_group_id),
+        _params(user_id, date_range, exercise_id, muscle_group_id),
     ).all()
     return [{"label": row[1], "value": float(row[2])} for row in rows]
 
 
 def build_report(
+    user_id: int,
     period: str | None,
     start: date | None = None,
     end: date | None = None,
@@ -178,10 +182,10 @@ def build_report(
             raise ApiError.not_found("Muscle group not found")
         muscle_group_name = muscle.name
 
-    summary = _summary(date_range, exercise_id, muscle_group_id)
-    per_date = _per_date(date_range, exercise_id, muscle_group_id)
-    muscle_groups = _muscle_groups(date_range, exercise_id, muscle_group_id)
-    exercise_frequency = _exercise_frequency(date_range, exercise_id, muscle_group_id)
+    summary = _summary(user_id, date_range, exercise_id, muscle_group_id)
+    per_date = _per_date(user_id, date_range, exercise_id, muscle_group_id)
+    muscle_groups = _muscle_groups(user_id, date_range, exercise_id, muscle_group_id)
+    exercise_frequency = _exercise_frequency(user_id, date_range, exercise_id, muscle_group_id)
 
     weight_progression = [
         {"date": row["date"].isoformat(), "value": row["max_weight"]}

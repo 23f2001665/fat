@@ -20,6 +20,9 @@ def serialize_user(user: User) -> dict:
     return {
         "id": user.id,
         "name": user.name,
+        "username": user.username,
+        "role": user.role,
+        "is_active": bool(user.is_active),
         "height_cm": user.height_cm,
         "date_of_birth": format_date(user.date_of_birth) if user.date_of_birth else None,
         "created_at": user.created_at,

@@ -23,6 +23,16 @@ class Config:
     SEED_DATABASE = True
     CREATE_SCHEMA = True
 
+    ADMIN_USERNAME = os.getenv("FAT_ADMIN_USERNAME", "admin")
+    ADMIN_PASSWORD = os.getenv("FAT_ADMIN_PASSWORD", "admin123")
+    DEFAULT_USERNAME = os.getenv("FAT_USER_USERNAME", "athlete")
+    DEFAULT_PASSWORD = os.getenv("FAT_USER_PASSWORD", "athlete123")
+
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = os.getenv("FAT_COOKIE_SECURE", "0") == "1"
+    PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 30
+
 
 class TestConfig(Config):
     TESTING = True

@@ -7,7 +7,7 @@ from datetime import date
 from sqlalchemy import func
 
 from ..calculations import bmi
-from ..dates import DateRange, today_local
+from ..dates import DateRange, now_timestamp, today_local
 from ..errors import ApiError
 from ...extensions import db
 from ..models import BodyMeasurement, User
@@ -34,14 +34,15 @@ MEASUREMENT_FIELDS = (
 )
 
 
-def get_local_user() -> User:
-    user = db.session.get(User, 1)
+def get_user(user_id: int) -> User:
+    user = db.session.get(User, user_id)
     if user is None:
-        raise ApiError.not_found("Local user profile is missing")
+        raise ApiError.not_found("User profile is missing")
     return user
 
 
 def update_profile(
+    user_id: int,
     name: object,
     height_cm: float | None = None,
     date_of_birth: date | None = None,
@@ -55,12 +56,10 @@ def update_profile(
             raise ApiError.validation("Date of birth cannot be in the future")
         if date_of_birth < MIN_DATE:
             raise ApiError.validation("Date of birth is too far in the past")
-    user = get_local_user()
+    user = get_user(user_id)
     user.name = cleaned
     user.height_cm = float(height_cm) if height_cm is not None else None
     user.date_of_birth = date_of_birth
-    from ..dates import now_timestamp
-
     user.updated_at = now_timestamp()
     db.session.commit()
     return user
@@ -111,6 +110,7 @@ def _validate_measurement(
 
 
 def add_measurement(
+    user_id: int,
     measured_at: date,
     weight_kg: float | None = None,
     height_cm: float | None = None,
@@ -133,7 +133,7 @@ def add_measurement(
         "thigh_cm": thigh_cm,
     }
     notes_value = _validate_measurement(measured_at, values, notes)
-    user = get_local_user()
+    user = get_user(user_id)
     measurement = BodyMeasurement(
         user_id=user.id,
         measured_at=measured_at,
@@ -154,37 +154,35 @@ def add_measurement(
     return measurement
 
 
-def measurement_history() -> list[BodyMeasurement]:
-    user = get_local_user()
+def measurement_history(user_id: int) -> list[BodyMeasurement]:
     return (
         db.session.query(BodyMeasurement)
-        .filter(BodyMeasurement.user_id == user.id)
+        .filter(BodyMeasurement.user_id == user_id)
         .order_by(BodyMeasurement.measured_at.desc(), BodyMeasurement.id.desc())
         .all()
     )
 
 
-def latest_measurement() -> BodyMeasurement | None:
-    history = measurement_history()
+def latest_measurement(user_id: int) -> BodyMeasurement | None:
+    history = measurement_history(user_id)
     return history[0] if history else None
 
 
-def latest_metrics() -> dict:
-    return serialize_latest_metrics(measurement_history())
+def latest_metrics(user_id: int) -> dict:
+    return serialize_latest_metrics(measurement_history(user_id))
 
 
-def comparisons() -> list[dict]:
-    return serialize_comparisons(measurement_history())
+def comparisons(user_id: int) -> list[dict]:
+    return serialize_comparisons(measurement_history(user_id))
 
 
-def metric_series(metric: str, date_range: DateRange) -> list[dict]:
+def metric_series(user_id: int, metric: str, date_range: DateRange) -> list[dict]:
     if metric not in {"weight", "bmi", "body-fat", "waist", "chest", "arm", "thigh"}:
         raise ApiError.validation(
             "Metric must be weight, bmi, body-fat, waist, chest, arm or thigh"
         )
-    user = get_local_user()
     query = db.session.query(BodyMeasurement).filter(
-        BodyMeasurement.user_id == user.id
+        BodyMeasurement.user_id == user_id
     )
     if date_range.start is not None:
         query = query.filter(BodyMeasurement.measured_at >= date_range.start)
@@ -203,9 +201,9 @@ def metric_series(metric: str, date_range: DateRange) -> list[dict]:
     ]
 
 
-def profile_payload() -> dict:
-    user = get_local_user()
-    history = measurement_history()
+def profile_payload(user_id: int) -> dict:
+    user = get_user(user_id)
+    history = measurement_history(user_id)
     return {
         "user": serialize_user(user),
         "latest_metrics": serialize_latest_metrics(history),
@@ -215,8 +213,8 @@ def profile_payload() -> dict:
     }
 
 
-def measurement_payload() -> dict:
-    history = measurement_history()
+def measurement_payload(user_id: int) -> dict:
+    history = measurement_history(user_id)
     return {
         "measurements": [serialize_measurement(item) for item in history],
         "latest_metrics": serialize_latest_metrics(history),
@@ -229,10 +227,10 @@ def bmi_from_snapshot(weight_kg: float | None, height_cm: float | None) -> float
     return bmi(weight_kg, height_cm)
 
 
-def measurement_count() -> int:
+def measurement_count(user_id: int) -> int:
     return (
         db.session.query(func.count(BodyMeasurement.id))
-        .filter(BodyMeasurement.user_id == get_local_user().id)
+        .filter(BodyMeasurement.user_id == user_id)
         .scalar()
         or 0
     )

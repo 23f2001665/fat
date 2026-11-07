@@ -5,12 +5,12 @@ import logging
 from pathlib import Path
 
 from flask import Flask, abort, jsonify, request, send_from_directory
-from flask_cors import CORS
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.exceptions import HTTPException
 
 from ..config import Config
 from ..extensions import db
+from .auth import init_auth
 from .bootstrap import bootstrap_database
 from .errors import ApiError
 from .routes import register_blueprints
@@ -118,7 +118,7 @@ def create_app(config_class=Config, overrides: dict | None = None) -> Flask:
     _prepare_sqlite_directory(str(app.config["SQLALCHEMY_DATABASE_URI"]))
 
     db.init_app(app)
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    init_auth(app)
     register_blueprints(app)
     _register_error_handlers(app)
 

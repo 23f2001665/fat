@@ -1,19 +1,42 @@
 <script setup>
-import { useRoute } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { toast } from 'vue3-toastify'
 import Icon from '@/components/Icon.vue'
+import { authState, isAdmin, logout } from '@/stores/auth'
+import { initials } from '@/utils/format'
 
 const route = useRoute()
+const router = useRouter()
 
-const navItems = [
-  { name: 'workout', label: 'Workout', icon: 'dumbbell', path: '/workout' },
-  { name: 'history', label: 'History', icon: 'history', path: '/history' },
-  { name: 'analytics', label: 'Analytics', icon: 'analytics', path: '/analytics' },
-  { name: 'library', label: 'Library', icon: 'library', path: '/library' },
-  { name: 'profile', label: 'Profile', icon: 'profile', path: '/profile' },
-]
+const navItems = computed(() => {
+  const items = [
+    { name: 'workout', label: 'Workout', icon: 'dumbbell', path: '/workout' },
+    { name: 'history', label: 'History', icon: 'history', path: '/history' },
+    { name: 'analytics', label: 'Analytics', icon: 'analytics', path: '/analytics' },
+    { name: 'library', label: 'Library', icon: 'library', path: '/library' },
+    { name: 'profile', label: 'Profile', icon: 'profile', path: '/profile' },
+  ]
+  if (isAdmin.value) {
+    items.push({ name: 'users', label: 'Users', icon: 'users', path: '/users' })
+  }
+  return items
+})
+
+const authUser = computed(() => authState.user)
+const roleLabel = computed(() =>
+  authState.user?.role === 'admin' ? 'Admin' : 'Member',
+)
+const avatarInitials = computed(() => initials(authState.user?.name))
 
 function isActive(item) {
   return route.name === item.name
+}
+
+async function handleLogout() {
+  await logout()
+  toast.success('Signed out')
+  await router.replace({ name: 'login' })
 }
 </script>
 
@@ -49,14 +72,23 @@ function isActive(item) {
 
       <div class="sidebar-spacer" />
 
-      <div class="local-card">
-        <span class="local-icon">
-          <Icon name="database" :size="17" />
+      <div class="account-card">
+        <span class="account-avatar" :class="{ admin: isAdmin }">
+          {{ avatarInitials }}
         </span>
-        <div>
-          <strong>Local-first</strong>
-          <p>Your training data stays on this server.</p>
+        <div class="account-copy">
+          <strong>{{ authUser?.name || 'Account' }}</strong>
+          <span>@{{ authUser?.username }} · {{ roleLabel }}</span>
         </div>
+        <button
+          class="btn btn-ghost btn-icon account-logout"
+          type="button"
+          aria-label="Sign out"
+          title="Sign out"
+          @click="handleLogout"
+        >
+          <Icon name="logout" :size="17" />
+        </button>
       </div>
       <p class="version-line">FAT 2.0 · Flask + Vue</p>
     </aside>
@@ -71,10 +103,22 @@ function isActive(item) {
           <small>Workout tracker</small>
         </span>
       </RouterLink>
-      <span class="mobile-status">
-        <span class="status-dot" />
-        Local
-      </span>
+      <div class="mobile-account">
+        <span class="mobile-avatar" :class="{ admin: isAdmin }">{{ avatarInitials }}</span>
+        <div class="mobile-account-copy">
+          <strong>{{ authUser?.name }}</strong>
+          <span>{{ roleLabel }}</span>
+        </div>
+        <button
+          class="btn btn-ghost btn-icon btn-sm"
+          type="button"
+          aria-label="Sign out"
+          title="Sign out"
+          @click="handleLogout"
+        >
+          <Icon name="logout" :size="16" />
+        </button>
+      </div>
     </div>
 
     <div class="app-main">
@@ -87,7 +131,11 @@ function isActive(item) {
       </main>
     </div>
 
-    <nav class="bottom-nav" aria-label="Mobile navigation">
+    <nav
+      class="bottom-nav"
+      aria-label="Mobile navigation"
+      :style="{ gridTemplateColumns: `repeat(${navItems.length}, 1fr)` }"
+    >
       <RouterLink
         v-for="item in navItems"
         :key="item.name"
@@ -231,40 +279,67 @@ function isActive(item) {
   flex: 1;
 }
 
-.local-card {
+.account-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
-  padding: 13px;
+  padding: 11px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: rgba(23, 33, 45, 0.5);
 }
 
-.local-icon {
+.account-avatar {
   display: grid;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--surface-2);
-  color: var(--accent);
+  color: var(--info);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
   place-items: center;
 }
 
-.local-card strong {
-  display: block;
-  color: var(--text-soft);
-  font-size: 0.75rem;
-  font-weight: 650;
+.account-avatar.admin {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
-.local-card p {
-  margin-top: 3px;
+.account-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.account-copy strong {
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-copy span {
+  overflow: hidden;
+  margin-top: 2px;
   color: var(--muted-2);
-  font-size: 0.66rem;
-  line-height: 1.5;
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-logout {
+  flex: 0 0 auto;
+  color: var(--muted-2);
 }
 
 .version-line {
@@ -359,21 +434,53 @@ function isActive(item) {
     font-size: 0.56rem;
   }
 
-  .mobile-status {
-    display: inline-flex;
+  .mobile-account {
+    display: flex;
     align-items: center;
-    gap: 6px;
-    color: var(--muted-2);
-    font-size: 0.67rem;
-    font-weight: 600;
+    gap: 8px;
   }
 
-  .status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.08);
+  .mobile-avatar {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-2);
+    color: var(--info);
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    font-weight: 650;
+    place-items: center;
+  }
+
+  .mobile-avatar.admin {
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .mobile-account-copy {
+    display: flex;
+    max-width: 110px;
+    flex-direction: column;
+    line-height: 1.15;
+    text-align: right;
+  }
+
+  .mobile-account-copy strong {
+    overflow: hidden;
+    color: var(--text-soft);
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-account-copy span {
+    margin-top: 2px;
+    color: var(--muted-2);
+    font-size: 0.58rem;
+    font-weight: 600;
   }
 
   .content {

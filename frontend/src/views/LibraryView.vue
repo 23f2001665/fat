@@ -17,6 +17,7 @@ import {
   setExerciseActive,
   setMuscleGroupActive,
 } from '@/api/library'
+import { isAdmin } from '@/stores/auth'
 import { pluralize } from '@/utils/format'
 
 const tabs = [
@@ -41,6 +42,12 @@ const itemModalKind = ref('muscle')
 const editingItem = ref(null)
 
 const currentTab = computed(() => tabs.find((tab) => tab.key === activeTab.value))
+
+const pageDescription = computed(() =>
+  isAdmin.value
+    ? 'Manage the exercises, muscle groups, and equipment that power logging and analytics. Historical records always keep their references.'
+    : 'Browse the shared exercise catalogue used for logging and analytics. Only administrators can change these reference records.',
+)
 
 const muscleUsage = computed(() => {
   const usage = new Map()
@@ -163,6 +170,9 @@ const emptyMessage = computed(() => {
   if (!showInactive.value) {
     return 'Everything in this section is inactive. Turn on “Show inactive” to see it.'
   }
+  if (!isAdmin.value) {
+    return 'An administrator manages this shared catalogue.'
+  }
   return 'Create the first item in this section to make it available while logging workouts.'
 })
 
@@ -196,6 +206,7 @@ function replaceRow(rows, saved) {
 }
 
 async function toggle(kind, row, isActive) {
+  if (!isAdmin.value) return
   const key = `${kind}-${row.id}`
   if (togglingKey.value) return
   togglingKey.value = key
@@ -220,6 +231,7 @@ async function toggle(kind, row, isActive) {
 }
 
 function openCreate() {
+  if (!isAdmin.value) return
   if (activeTab.value === 'exercises') {
     editingExercise.value = null
     exerciseModalOpen.value = true
@@ -231,11 +243,13 @@ function openCreate() {
 }
 
 function openExercise(exercise) {
+  if (!isAdmin.value) return
   editingExercise.value = exercise
   exerciseModalOpen.value = true
 }
 
 function openItem(kind, item) {
+  if (!isAdmin.value) return
   itemModalKind.value = kind
   editingItem.value = item
   itemModalOpen.value = true
@@ -257,19 +271,27 @@ onMounted(() => loadAll())
     <PageHeader
       eyebrow="Reference data"
       title="Library"
-      description="Manage the exercises, muscle groups, and equipment that power logging and analytics. Historical records always keep their references."
+      :description="pageDescription"
     >
       <template #actions>
         <button class="btn btn-secondary" type="button" :disabled="loading" @click="loadAll()">
           <Icon name="refresh" :size="16" />
           Refresh
         </button>
-        <button class="btn btn-primary" type="button" @click="openCreate">
+        <button v-if="isAdmin" class="btn btn-primary" type="button" @click="openCreate">
           <Icon name="plus" :size="16" />
           {{ panelCopy.addLabel }}
         </button>
       </template>
     </PageHeader>
+
+    <div v-if="!isAdmin" class="notice read-only-notice">
+      <Icon name="shield" :size="18" class="notice-icon" />
+      <span>
+        You are browsing the shared library in read-only mode. An administrator manages
+        exercises, muscle groups and equipment for everyone.
+      </span>
+    </div>
 
     <div v-if="errorMessage" class="notice notice-danger">
       <Icon name="alert" :size="18" class="notice-icon" />
@@ -339,7 +361,10 @@ onMounted(() => loadAll())
 
       <div class="library-toolbar">
         <div class="toolbar-copy">
-          <h2>{{ panelCopy.title }}</h2>
+          <h2>
+            {{ panelCopy.title }}
+            <span v-if="!isAdmin" class="badge badge-muted">Read-only</span>
+          </h2>
           <p>{{ panelCopy.description }}</p>
         </div>
         <div class="toolbar-controls">
@@ -391,7 +416,7 @@ onMounted(() => loadAll())
             <p v-else class="row-description subtle">No muscle groups assigned.</p>
           </div>
 
-          <div class="row-actions">
+          <div v-if="isAdmin" class="row-actions">
             <ToggleSwitch
               :model-value="exercise.is_active"
               :disabled="isToggling('exercise', exercise.id)"
@@ -436,7 +461,7 @@ onMounted(() => loadAll())
             <p v-else class="row-description subtle">No description.</p>
           </div>
 
-          <div class="row-actions">
+          <div v-if="isAdmin" class="row-actions">
             <ToggleSwitch
               :model-value="muscle.is_active"
               :disabled="isToggling('muscle', muscle.id)"
@@ -485,7 +510,7 @@ onMounted(() => loadAll())
             </p>
           </div>
 
-          <div class="row-actions">
+          <div v-if="isAdmin" class="row-actions">
             <ToggleSwitch
               :model-value="item.is_active"
               :disabled="item.is_reserved || isToggling('equipment', item.id)"
@@ -519,7 +544,7 @@ onMounted(() => loadAll())
         >
           Clear search
         </button>
-        <button v-else class="btn btn-primary" type="button" @click="openCreate">
+        <button v-else-if="isAdmin" class="btn btn-primary" type="button" @click="openCreate">
           <Icon name="plus" :size="16" />
           {{ panelCopy.addLabel }}
         </button>
@@ -527,6 +552,7 @@ onMounted(() => loadAll())
     </section>
 
     <ExerciseModal
+      v-if="isAdmin"
       :open="exerciseModalOpen"
       :exercise="editingExercise"
       :muscle-groups="muscleGroups"
@@ -535,6 +561,7 @@ onMounted(() => loadAll())
     />
 
     <LibraryItemModal
+      v-if="isAdmin"
       :open="itemModalOpen"
       :kind="itemModalKind"
       :item="editingItem"
@@ -547,6 +574,10 @@ onMounted(() => loadAll())
 <style scoped>
 .retry-button {
   margin-left: auto;
+}
+
+.read-only-notice {
+  align-items: center;
 }
 
 .summary-grid {

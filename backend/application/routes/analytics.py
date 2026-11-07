@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
+from ..auth import current_user
 from ..services import analytics_service
 from .common import query_optional_date, query_optional_int
 
@@ -13,6 +14,7 @@ bp = Blueprint("analytics", __name__)
 def get_analytics():
     return jsonify(
         analytics_service.build_report(
+            user_id=current_user().id,
             period=request.args.get("period", "30"),
             start=query_optional_date("start", "Start date"),
             end=query_optional_date("end", "End date"),

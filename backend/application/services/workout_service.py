@@ -78,6 +78,7 @@ def _get_equipment(equipment_id: int, require_active: bool) -> Equipment:
 
 
 def add_set(
+    user_id: int,
     workout_date: date,
     exercise_id: int,
     equipment_id: int,
@@ -94,16 +95,21 @@ def add_set(
     _get_equipment(equipment_id, True)
     info = optional_text(extra_info, "Extra information")
 
-    # The lock and unique (date, sequence_number) key keep sequence allocation
-    # deterministic even if two requests arrive at the same moment.
+    # Sequence numbers are allocated per user and per day. The lock and the
+    # unique (user, date, sequence_number) key keep allocation deterministic
+    # even if two requests arrive at the same moment.
     with _sequence_lock:
         next_sequence = (
             db.session.query(func.coalesce(func.max(WorkoutLog.sequence_number), 0))
-            .filter(WorkoutLog.date == workout_date)
+            .filter(
+                WorkoutLog.user_id == user_id,
+                WorkoutLog.date == workout_date,
+            )
             .scalar()
             or 0
         ) + 1
         workout_set = WorkoutLog(
+            user_id=user_id,
             date=workout_date,
             sequence_number=next_sequence,
             exercise_id=exercise_id,
@@ -120,14 +126,15 @@ def add_set(
     return workout_set
 
 
-def get_set(workout_date: date, sequence_number: int) -> WorkoutLog:
-    workout_set = db.session.get(WorkoutLog, (workout_date, sequence_number))
+def get_set(user_id: int, workout_date: date, sequence_number: int) -> WorkoutLog:
+    workout_set = db.session.get(WorkoutLog, (user_id, workout_date, sequence_number))
     if workout_set is None:
         raise ApiError.not_found("Workout set not found")
     return workout_set
 
 
 def update_set(
+    user_id: int,
     workout_date: date,
     sequence_number: int,
     exercise_id: int,
@@ -141,7 +148,7 @@ def update_set(
 ) -> WorkoutLog:
     validate_workout_date(workout_date)
     validate_workout_values(weight, complete_reps, partial_reps, rest_seconds, rir)
-    workout_set = get_set(workout_date, sequence_number)
+    workout_set = get_set(user_id, workout_date, sequence_number)
     existing_exercise_id = workout_set.exercise_id
     existing_equipment_id = workout_set.equipment_id
 
@@ -162,53 +169,68 @@ def update_set(
     return workout_set
 
 
-def delete_set(workout_date: date, sequence_number: int) -> None:
-    workout_set = get_set(workout_date, sequence_number)
+def delete_set(user_id: int, workout_date: date, sequence_number: int) -> None:
+    workout_set = get_set(user_id, workout_date, sequence_number)
     db.session.delete(workout_set)
     db.session.commit()
 
 
-def workout_for_date(workout_date: date) -> list[WorkoutLog]:
+def workout_for_date(user_id: int, workout_date: date) -> list[WorkoutLog]:
     return (
         db.session.query(WorkoutLog)
-        .filter(WorkoutLog.date == workout_date)
+        .filter(
+            WorkoutLog.user_id == user_id,
+            WorkoutLog.date == workout_date,
+        )
         .order_by(WorkoutLog.sequence_number.asc())
         .all()
     )
 
 
-def today_workout() -> list[WorkoutLog]:
-    return workout_for_date(today_local())
+def today_workout(user_id: int) -> list[WorkoutLog]:
+    return workout_for_date(user_id, today_local())
 
 
-def next_sequence(workout_date: date) -> int:
+def next_sequence(user_id: int, workout_date: date) -> int:
     current = (
         db.session.query(func.max(WorkoutLog.sequence_number))
-        .filter(WorkoutLog.date == workout_date)
+        .filter(
+            WorkoutLog.user_id == user_id,
+            WorkoutLog.date == workout_date,
+        )
         .scalar()
     )
     return (current or 0) + 1
 
 
-def history() -> list[dict]:
-    totals = db.session.query(
-        WorkoutLog.date.label("date"),
-        func.count().label("set_count"),
-        func.sum(
-            WorkoutLog.weight
-            * (WorkoutLog.complete_reps + WorkoutLog.partial_reps / 2.0)
-        ).label("total_volume"),
-    ).group_by(WorkoutLog.date).order_by(WorkoutLog.date.desc()).all()
+def history(user_id: int) -> list[dict]:
+    totals = (
+        db.session.query(
+            WorkoutLog.date.label("date"),
+            func.count().label("set_count"),
+            func.sum(
+                WorkoutLog.weight
+                * (WorkoutLog.complete_reps + WorkoutLog.partial_reps / 2.0)
+            ).label("total_volume"),
+        )
+        .filter(WorkoutLog.user_id == user_id)
+        .group_by(WorkoutLog.date)
+        .order_by(WorkoutLog.date.desc())
+        .all()
+    )
 
-    names = db.session.query(
-        WorkoutLog.date,
-        Exercise.name,
-        func.min(WorkoutLog.sequence_number).label("first_sequence"),
-    ).join(Exercise, Exercise.id == WorkoutLog.exercise_id).group_by(
-        WorkoutLog.date, Exercise.id, Exercise.name
-    ).order_by(
-        WorkoutLog.date.desc(), func.min(WorkoutLog.sequence_number).asc()
-    ).all()
+    names = (
+        db.session.query(
+            WorkoutLog.date,
+            Exercise.name,
+            func.min(WorkoutLog.sequence_number).label("first_sequence"),
+        )
+        .join(Exercise, Exercise.id == WorkoutLog.exercise_id)
+        .filter(WorkoutLog.user_id == user_id)
+        .group_by(WorkoutLog.date, Exercise.id, Exercise.name)
+        .order_by(WorkoutLog.date.desc(), func.min(WorkoutLog.sequence_number).asc())
+        .all()
+    )
 
     names_by_date: dict[date, list[str]] = {}
     for workout_date, exercise_name, _ in names:
@@ -229,20 +251,20 @@ def date_label(value: date) -> str:
     return format_date(value)
 
 
-def exercises_performed(workout_date: date) -> list[str]:
+def exercises_performed(user_id: int, workout_date: date) -> list[str]:
     names: list[str] = []
-    for workout_set in workout_for_date(workout_date):
+    for workout_set in workout_for_date(user_id, workout_date):
         if workout_set.exercise.name not in names:
             names.append(workout_set.exercise.name)
     return names
 
 
-def preview_day(workout_date: date) -> dict:
-    sets = workout_for_date(workout_date)
+def preview_day(user_id: int, workout_date: date) -> dict:
+    sets = workout_for_date(user_id, workout_date)
     return {
         "date": format_date(workout_date),
         "sets": sets,
-        "next_sequence": next_sequence(workout_date),
+        "next_sequence": next_sequence(user_id, workout_date),
         "date_min": (today_local() - timedelta(days=36500)).isoformat(),
     }
 
