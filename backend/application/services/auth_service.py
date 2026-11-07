@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from flask import current_app
 from sqlalchemy import func
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -144,6 +145,19 @@ def create_user(
     db.session.add(user)
     db.session.commit()
     return user
+
+
+def register_user(name: object, username: object, password: object) -> User:
+    """Create a self-service member account.
+
+    Registration can be closed with ``FAT_ALLOW_REGISTRATION=0``. Public
+    sign-up always creates a normal member; roles are only assigned by an
+    administrator.
+    """
+
+    if not current_app.config.get("ALLOW_REGISTRATION", True):
+        raise ApiError.forbidden("Account registration is disabled")
+    return create_user(name, username, password, role="user")
 
 
 def update_user(

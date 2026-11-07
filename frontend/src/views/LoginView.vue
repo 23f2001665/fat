@@ -1,17 +1,30 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue3-toastify'
 import Icon from '@/components/Icon.vue'
-import { login } from '@/stores/auth'
+import { login, register } from '@/stores/auth'
+
+const props = defineProps({
+  mode: { type: String, default: 'login' },
+})
 
 const route = useRoute()
 const router = useRouter()
 
 const username = ref('')
+const name = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const submitting = ref(false)
 const errorMessage = ref('')
+const isRegister = computed(() => props.mode === 'register')
+
+watch(isRegister, () => {
+  errorMessage.value = ''
+  password.value = ''
+  confirmPassword.value = ''
+})
 
 function destination() {
   const redirect = route.query.redirect
@@ -19,7 +32,8 @@ function destination() {
     typeof redirect === 'string' &&
     redirect.startsWith('/') &&
     !redirect.startsWith('//') &&
-    redirect !== '/login'
+    redirect !== '/login' &&
+    redirect !== '/register'
   ) {
     return redirect
   }
@@ -29,20 +43,40 @@ function destination() {
 async function submit() {
   if (submitting.value) return
   errorMessage.value = ''
+  if (isRegister.value && !name.value.trim()) {
+    errorMessage.value = 'Enter your name.'
+    return
+  }
   if (!username.value.trim() || !password.value) {
     errorMessage.value = 'Enter your username and password.'
+    return
+  }
+  if (isRegister.value && password.value.length < 8) {
+    errorMessage.value = 'Choose a password with at least 8 characters.'
+    return
+  }
+  if (isRegister.value && password.value !== confirmPassword.value) {
+    errorMessage.value = 'The passwords do not match.'
     return
   }
 
   submitting.value = true
   try {
-    const user = await login(username.value.trim(), password.value)
-    toast.success(`Welcome back, ${user.name}`)
+    const user = isRegister.value
+      ? await register(name.value.trim(), username.value.trim(), password.value)
+      : await login(username.value.trim(), password.value)
+    toast.success(
+      isRegister.value ? `Welcome, ${user.name}` : `Welcome back, ${user.name}`,
+    )
     await router.replace(destination())
   } catch (error) {
     errorMessage.value =
-      error.userMessage || 'Could not sign in. Check your credentials and try again.'
+      error.userMessage ||
+      (isRegister.value
+        ? 'Could not create the account. Try a different username.'
+        : 'Could not sign in. Check your credentials and try again.')
     password.value = ''
+    confirmPassword.value = ''
   } finally {
     submitting.value = false
   }
@@ -63,14 +97,29 @@ async function submit() {
       </div>
 
       <div class="login-heading">
-        <p class="eyebrow">Private training log</p>
-        <h1>Sign in to FAT</h1>
-        <p>
+        <p class="eyebrow">{{ isRegister ? 'Join the tracker' : 'Private training log' }}</p>
+        <h1>{{ isRegister ? 'Create your account' : 'Sign in to FAT' }}</h1>
+        <p v-if="isRegister">
+          Start logging your own workouts, body measurements and progress.
+        </p>
+        <p v-else>
           Your workouts, measurements and progress are tied to your own account.
         </p>
       </div>
 
       <form class="login-form" @submit.prevent="submit">
+        <label v-if="isRegister" class="field">
+          <span class="field-label">Name</span>
+          <input
+            v-model="name"
+            class="input"
+            type="text"
+            autocomplete="name"
+            placeholder="Your display name"
+            required
+          />
+        </label>
+
         <label class="field">
           <span class="field-label">Username</span>
           <input
@@ -92,8 +141,20 @@ async function submit() {
             v-model="password"
             class="input"
             type="password"
-            autocomplete="current-password"
-            placeholder="Your password"
+            :autocomplete="isRegister ? 'new-password' : 'current-password'"
+            :placeholder="isRegister ? 'At least 8 characters' : 'Your password'"
+            required
+          />
+        </label>
+
+        <label v-if="isRegister" class="field">
+          <span class="field-label">Confirm password</span>
+          <input
+            v-model="confirmPassword"
+            class="input"
+            type="password"
+            autocomplete="new-password"
+            placeholder="Repeat your password"
             required
           />
         </label>
@@ -105,14 +166,21 @@ async function submit() {
 
         <button class="btn btn-primary btn-block login-submit" type="submit" :disabled="submitting">
           <span v-if="submitting" class="spinner" />
-          <Icon v-else name="shield" :size="18" />
-          {{ submitting ? 'Signing in…' : 'Sign in' }}
+          <Icon v-else :name="isRegister ? 'userPlus' : 'shield'" :size="18" />
+          <template v-if="submitting">
+            {{ isRegister ? 'Creating account…' : 'Signing in…' }}
+          </template>
+          <template v-else>{{ isRegister ? 'Create account' : 'Sign in' }}</template>
         </button>
       </form>
 
-      <p class="login-footnote">
-        Accounts are managed by an administrator. Contact them if you need access or a
-        password reset.
+      <p v-if="isRegister" class="login-footnote">
+        Already have an account?
+        <RouterLink to="/login">Sign in</RouterLink>
+      </p>
+      <p v-else class="login-footnote">
+        New here? <RouterLink to="/register">Create an account</RouterLink>.
+        Accounts can also be created or reset by an administrator.
       </p>
     </section>
 
@@ -255,6 +323,16 @@ async function submit() {
   color: var(--muted-2);
   font-size: 0.68rem;
   line-height: 1.6;
+}
+
+.login-footnote a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.login-footnote a:hover {
+  text-decoration: underline;
 }
 
 .login-aside {

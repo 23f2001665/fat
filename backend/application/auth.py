@@ -9,7 +9,12 @@ from .errors import ApiError
 from .models import User
 
 
-PUBLIC_API_PATHS = {"/api/health", "/api/auth/login", "/api/auth/logout"}
+PUBLIC_API_PATHS = {
+    "/api/health",
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/logout",
+}
 
 
 def init_auth(app: Flask) -> None:

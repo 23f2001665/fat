@@ -27,6 +27,7 @@ class Config:
     ADMIN_PASSWORD = os.getenv("FAT_ADMIN_PASSWORD", "admin123")
     DEFAULT_USERNAME = os.getenv("FAT_USER_USERNAME", "athlete")
     DEFAULT_PASSWORD = os.getenv("FAT_USER_PASSWORD", "athlete123")
+    ALLOW_REGISTRATION = os.getenv("FAT_ALLOW_REGISTRATION", "1") == "1"
 
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"

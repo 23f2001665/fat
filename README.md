@@ -38,6 +38,8 @@ branch replaces it at the repository root with this Flask + Vue application.
   catalogue.
 - **Account administration.** Administrators can create accounts, reset
   passwords, change roles, and deactivate users without deleting their history.
+- **Self-service registration.** New members can create their own account from
+  the sign-in screen. Registration can be closed with `FAT_ALLOW_REGISTRATION=0`.
 - **Local-first storage.** Data lives in SQLite on the machine serving the app.
   Passwords are hashed with Werkzeug and sessions use an HTTP-only cookie.
 
@@ -75,6 +77,18 @@ export FAT_USER_PASSWORD='another-long-password'
 
 Seeding only creates accounts that do not exist. It never renames an existing
 account or resets a live password on restart.
+
+Anyone who can reach the app can create a normal member account from the
+**Create account** link on the sign-in screen. Self-registration always creates
+a member, never an administrator. To close public registration, start the app
+with:
+
+```bash
+export FAT_ALLOW_REGISTRATION=0
+```
+
+When registration is disabled, only administrators can create accounts from the
+Users screen.
 
 - **Administrators** can manage the shared exercise library and the user list.
   They also keep their own private workouts and measurements.
@@ -262,8 +276,8 @@ uv run pytest
 The suite covers calculations, sequence allocation and deletion, validation,
 library guard rails, reserved equipment protection, measurement snapshots and
 BMI rules, analytics attribution, weekly grouping, filters, empty ranges,
-session authentication, role-based access, per-user isolation, account
-management, and in-place migration of pre-RBAC databases.
+session authentication, self-registration, role-based access, per-user
+isolation, account management, and in-place migration of pre-RBAC databases.
 
 ## API overview
 
@@ -273,6 +287,7 @@ All API routes are under `/api` and return JSON.
 | --- | --- | --- |
 | `GET` | `/api/health` | Health check |
 | `POST` | `/api/auth/login` | Sign in and open a session |
+| `POST` | `/api/auth/register` | Create a member account and sign in |
 | `POST` | `/api/auth/logout` | End the current session |
 | `GET` | `/api/auth/me` | Current signed-in user |
 | `PUT` | `/api/auth/password` | Change the current password |
@@ -302,10 +317,10 @@ All API routes are under `/api` and return JSON.
 | `GET` | `/api/profile/series?metric=weight&period=all` | Measurement trend |
 | `GET` | `/api/analytics?period=30` | Analytics report for the signed-in user |
 
-All routes except `/api/health`, `/api/auth/login`, and `/api/auth/logout`
-require an authenticated session cookie. Admin-only routes return `403` for
-members. Workout, measurement, history, and analytics responses only contain
-the signed-in account's records.
+All routes except `/api/health`, `/api/auth/login`, `/api/auth/register`, and
+`/api/auth/logout` require an authenticated session cookie. Admin-only routes
+return `403` for members. Workout, measurement, history, and analytics responses
+only contain the signed-in account's records.
 
 Library list endpoints accept `include_inactive=true` and `search=...`.
 Analytics accepts `period=7|30|90|6m|12m|all|custom`, `start`, `end`,

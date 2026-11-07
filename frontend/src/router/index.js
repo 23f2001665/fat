@@ -5,9 +5,17 @@ const MainLayout = () => import('@/layouts/MainLayout.vue')
 
 const routes = [
   {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/views/LoginView.vue'),
+    props: { mode: 'register' },
+    meta: { title: 'Create account' },
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('@/views/LoginView.vue'),
+    props: { mode: 'login' },
     meta: { title: 'Sign in' },
   },
   {
@@ -79,7 +87,7 @@ router.beforeEach(async (to) => {
     }
   }
 
-  if (to.name === 'login') {
+  if (to.name === 'login' || to.name === 'register') {
     if (authState.user) {
       const redirect =
         typeof to.query.redirect === 'string' && to.query.redirect.startsWith('/')

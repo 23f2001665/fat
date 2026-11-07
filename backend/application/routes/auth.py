@@ -11,14 +11,33 @@ from .common import json_object
 bp = Blueprint("auth", __name__)
 
 
+def _start_session(user) -> None:
+    session.clear()
+    session.permanent = True
+    session["user_id"] = user.id
+
+
 @bp.post("/auth/login")
 def login():
     data = json_object()
     user = auth_service.authenticate(data.get("username"), data.get("password"))
-    session.clear()
-    session.permanent = True
-    session["user_id"] = user.id
+    _start_session(user)
     return jsonify({"message": "Signed in", "user": serialize_user(user)})
+
+
+@bp.post("/auth/register")
+def register():
+    data = json_object()
+    user = auth_service.register_user(
+        data.get("name"),
+        data.get("username"),
+        data.get("password"),
+    )
+    _start_session(user)
+    return (
+        jsonify({"message": "Account created", "user": serialize_user(user)}),
+        201,
+    )
 
 
 @bp.post("/auth/logout")

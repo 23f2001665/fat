@@ -58,6 +58,74 @@ def test_login_rejects_bad_credentials(anonymous_client):
     )
 
 
+def test_public_registration_creates_member_and_signs_in(anonymous_client):
+    response = anonymous_client.post(
+        "/api/auth/register",
+        json={
+            "name": " New Member ",
+            "username": " New.Member ",
+            "password": "newmember123",
+            "role": "admin",
+        },
+    )
+    assert response.status_code == 201
+    user = response.get_json()["user"]
+    assert user["name"] == "New Member"
+    assert user["username"] == "new.member"
+    assert user["role"] == "user"
+    assert user["is_active"] is True
+
+    # Registration signs the new member in immediately.
+    me = anonymous_client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.get_json()["user"]["username"] == "new.member"
+
+    assert anonymous_client.get("/api/library/exercises").status_code == 200
+    assert anonymous_client.get("/api/workouts").status_code == 200
+    assert anonymous_client.get("/api/admin/users").status_code == 403
+
+    anonymous_client.post("/api/auth/logout")
+    login = anonymous_client.post(
+        "/api/auth/login",
+        json={"username": "new.member", "password": "newmember123"},
+    )
+    assert login.status_code == 200
+
+
+def test_registration_validates_input_and_rejects_duplicates(anonymous_client):
+    payload = {
+        "name": "Duplicate Member",
+        "username": "duplicate",
+        "password": "duplicate123",
+    }
+    assert anonymous_client.post("/api/auth/register", json=payload).status_code == 201
+    assert anonymous_client.post("/api/auth/register", json=payload).status_code == 409
+
+    invalid_payloads = (
+        {"name": "", "username": "validname", "password": "password123"},
+        {"name": "Valid Name", "username": "x", "password": "password123"},
+        {"name": "Valid Name", "username": "validname", "password": "short"},
+        {"name": "Valid Name", "username": "valid name", "password": "password123"},
+    )
+    for invalid in invalid_payloads:
+        response = anonymous_client.post("/api/auth/register", json=invalid)
+        assert response.status_code == 400, (invalid, response.get_json())
+
+
+def test_registration_can_be_disabled(app, anonymous_client):
+    app.config["ALLOW_REGISTRATION"] = False
+    response = anonymous_client.post(
+        "/api/auth/register",
+        json={
+            "name": "Closed Registration",
+            "username": "closed",
+            "password": "closed1234",
+        },
+    )
+    assert response.status_code == 403
+    assert response.get_json()["code"] == "forbidden"
+
+
 def test_normal_user_can_read_but_not_mutate_the_library(user_client):
     assert user_client.get("/api/library/exercises").status_code == 200
 

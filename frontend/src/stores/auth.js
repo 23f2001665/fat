@@ -3,6 +3,7 @@ import {
   getCurrentUser,
   login as loginRequest,
   logout as logoutRequest,
+  register as registerRequest,
 } from '@/api/auth'
 
 export const authState = reactive({
@@ -41,6 +42,13 @@ export async function fetchCurrentUser({ force = false } = {}) {
 
 export async function login(username, password) {
   const user = await loginRequest(username, password)
+  authState.user = user
+  authState.loaded = true
+  return user
+}
+
+export async function register(name, username, password) {
+  const user = await registerRequest(name, username, password)
   authState.user = user
   authState.loaded = true
   return user
