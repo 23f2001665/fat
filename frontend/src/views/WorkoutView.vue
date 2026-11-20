@@ -4,17 +4,20 @@ import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue3-toastify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import GettingStartedCard from '@/components/GettingStartedCard.vue'
 import Icon from '@/components/Icon.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatCard from '@/components/StatCard.vue'
+import WeeklyGoalCard from '@/components/WeeklyGoalCard.vue'
 import WorkoutSetModal from '@/components/WorkoutSetModal.vue'
-import { deleteWorkoutSet, getWorkoutDay } from '@/api/workouts'
+import { deleteWorkoutSet, getWorkoutDay, getWorkoutHistory } from '@/api/workouts'
 import { getEquipment, getExercises } from '@/api/library'
+import { getProfile } from '@/api/profile'
+import { dismissChecklist, goalState } from '@/stores/goals'
 import {
   formatDateLong,
   formatNumber,
   formatRest,
-  formatWeight,
   shiftDateISO,
   todayISO,
 } from '@/utils/format'
@@ -31,8 +34,13 @@ const exercises = ref([])
 const equipment = ref([])
 const modalOpen = ref(false)
 const editingSet = ref(null)
+const templateSet = ref(null)
 const deleteTarget = ref(null)
 const deleteBusy = ref(false)
+const trainedDates = ref([])
+const historyLoaded = ref(false)
+const measurementCount = ref(null)
+const goalEditorOpen = ref(false)
 
 const today = todayISO()
 
@@ -43,11 +51,18 @@ const totalEffectiveReps = computed(() =>
   sets.value.reduce((sum, item) => sum + Number(item.effective_reps || 0), 0),
 )
 const exerciseCount = computed(() => new Set(sets.value.map((item) => item.exercise_id)).size)
+const lastSet = computed(() => sets.value[sets.value.length - 1] || null)
 const dateHeading = computed(() => formatDateLong(selectedDate.value))
+const showChecklist = computed(() => {
+  if (goalState.checklistDismissed || !historyLoaded.value || measurementCount.value === null) {
+    return false
+  }
+  return !(goalState.goalChosen && trainedDates.value.length && measurementCount.value)
+})
 const description = computed(() =>
   isToday.value
-    ? 'Log the work you put in today. Every set becomes part of your history and analytics.'
-    : `Reviewing ${dateHeading.value}. Add, edit, or remove sets without changing the sequence of the rest.`,
+    ? 'Log today’s sets. Each one feeds your history and analytics.'
+    : `Reviewing ${dateHeading.value}.`,
 )
 
 async function loadReferences() {
@@ -60,6 +75,27 @@ async function loadReferences() {
     equipment.value = equipmentRows
   } catch (error) {
     toast.error(error.userMessage || 'Could not load exercises and equipment.')
+  }
+}
+
+async function loadHistory() {
+  try {
+    const rows = await getWorkoutHistory()
+    trainedDates.value = rows.map((row) => row.date)
+  } catch {
+    // The weekly goal card simply shows no sessions; the day view still works.
+  } finally {
+    historyLoaded.value = true
+  }
+}
+
+async function loadMeasurementCount() {
+  if (goalState.checklistDismissed) return
+  try {
+    const profile = await getProfile()
+    measurementCount.value = profile.measurement_count || 0
+  } catch {
+    measurementCount.value = null
   }
 }
 
@@ -98,16 +134,29 @@ function openAdd() {
     return
   }
   editingSet.value = null
+  // Smart default: start from the most recent set of the day.
+  templateSet.value = lastSet.value
+  modalOpen.value = true
+}
+
+function openRepeat(workoutSet) {
+  editingSet.value = null
+  templateSet.value = workoutSet
   modalOpen.value = true
 }
 
 function openEdit(workoutSet) {
   editingSet.value = workoutSet
+  templateSet.value = null
   modalOpen.value = true
 }
 
+function chooseGoal() {
+  goalEditorOpen.value = true
+}
+
 async function handleSaved() {
-  await loadDay(selectedDate.value, { silent: true })
+  await Promise.all([loadDay(selectedDate.value, { silent: true }), loadHistory()])
 }
 
 function askDelete(workoutSet) {
@@ -121,7 +170,7 @@ async function confirmDelete() {
     await deleteWorkoutSet(deleteTarget.value.date, deleteTarget.value.sequence_number)
     toast.success(`Set ${deleteTarget.value.sequence_number} deleted`)
     deleteTarget.value = null
-    await loadDay(selectedDate.value, { silent: true })
+    await Promise.all([loadDay(selectedDate.value, { silent: true }), loadHistory()])
   } catch (error) {
     toast.error(error.userMessage || 'Could not delete the set.')
   } finally {
@@ -144,13 +193,16 @@ watch(
   { immediate: true },
 )
 
-onMounted(loadReferences)
+onMounted(() => {
+  loadReferences()
+  loadHistory()
+  loadMeasurementCount()
+})
 </script>
 
 <template>
   <div class="page">
     <PageHeader
-      eyebrow="Training log"
       title="Workout"
       :description="description"
     >
@@ -161,6 +213,22 @@ onMounted(loadReferences)
         </button>
       </template>
     </PageHeader>
+
+    <GettingStartedCard
+      v-if="showChecklist"
+      :has-sets="trainedDates.length > 0"
+      :has-measurement="Boolean(measurementCount)"
+      :goal-chosen="goalState.goalChosen"
+      @log-set="openAdd"
+      @choose-goal="chooseGoal"
+      @dismiss="dismissChecklist"
+    />
+
+    <WeeklyGoalCard
+      v-if="historyLoaded"
+      v-model:editing="goalEditorOpen"
+      :trained-dates="trainedDates"
+    />
 
     <section class="day-toolbar card">
       <div class="date-navigator">
@@ -199,7 +267,6 @@ onMounted(loadReferences)
 
       <div class="day-toolbar-right">
         <span v-if="isToday" class="badge badge-accent">Today</span>
-        <span v-else class="badge">{{ formatDateLong(selectedDate) }}</span>
         <button
           class="btn btn-secondary btn-sm"
           type="button"
@@ -242,7 +309,6 @@ onMounted(loadReferences)
           label="Sets"
           :value="sets.length"
           icon="dumbbell"
-          hint="Recorded on this day"
           compact
         />
         <StatCard
@@ -259,7 +325,7 @@ onMounted(loadReferences)
           :value="formatNumber(totalEffectiveReps, 1)"
           icon="target"
           tone="violet"
-          hint="Complete + ½ partials"
+          hint="Partials count as half"
           compact
         />
         <StatCard
@@ -267,21 +333,22 @@ onMounted(loadReferences)
           :value="exerciseCount"
           icon="library"
           tone="warning"
-          hint="Distinct movements"
           compact
         />
       </div>
 
       <section class="sets-card card">
         <header class="sets-header">
-          <div>
-            <h2>Recorded sets</h2>
-            <p v-if="sets.length">
-              Sequence numbers stay stable even after a set is deleted.
-            </p>
-            <p v-else>No sets have been logged for this date yet.</p>
-          </div>
-          <span v-if="sets.length" class="badge">{{ sets.length }} total</span>
+          <h2>Recorded sets</h2>
+          <button
+            v-if="lastSet"
+            class="btn btn-secondary btn-sm"
+            type="button"
+            @click="openRepeat(lastSet)"
+          >
+            <Icon name="repeat" :size="14" />
+            Repeat last set
+          </button>
         </header>
 
         <div v-if="sets.length" class="set-list">
@@ -302,6 +369,15 @@ onMounted(loadReferences)
                   <span class="equipment-name">{{ workoutSet.equipment_name }}</span>
                 </div>
                 <div class="set-actions">
+                  <button
+                    class="btn btn-ghost btn-icon btn-sm"
+                    type="button"
+                    :aria-label="`Log set ${workoutSet.sequence_number} again`"
+                    title="Log again"
+                    @click="openRepeat(workoutSet)"
+                  >
+                    <Icon name="repeat" :size="15" />
+                  </button>
                   <button
                     class="btn btn-ghost btn-icon btn-sm"
                     type="button"
@@ -375,6 +451,8 @@ onMounted(loadReferences)
       :open="modalOpen"
       :date="selectedDate"
       :workout-set="editingSet"
+      :template-set="templateSet"
+      :day-sets="sets"
       :exercises="exercises"
       :equipment="equipment"
       @close="modalOpen = false"
@@ -400,14 +478,14 @@ onMounted(loadReferences)
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 12px 14px;
+  gap: 12px;
+  padding: 12px 12px;
 }
 
 .date-navigator {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .date-field {
@@ -415,7 +493,7 @@ onMounted(loadReferences)
   align-items: center;
   gap: 8px;
   min-height: 40px;
-  padding: 0 11px;
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-2);
@@ -429,7 +507,7 @@ onMounted(loadReferences)
   background: transparent;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
 }
 
 .date-input::-webkit-calendar-picker-indicator {
@@ -440,7 +518,7 @@ onMounted(loadReferences)
 .day-toolbar-right {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
 }
 
 .badge :deep(svg) {
@@ -458,7 +536,7 @@ onMounted(loadReferences)
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 13px;
+  gap: 12px;
 }
 
 .summary-skeleton {
@@ -475,17 +553,12 @@ onMounted(loadReferences)
 
 .sets-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 20px 22px;
-  border-bottom: 1px solid var(--border);
-}
-
-.sets-header p {
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: 0.8rem;
+  min-height: 64px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .set-list {
@@ -495,9 +568,9 @@ onMounted(loadReferences)
 
 .set-row {
   display: flex;
-  gap: 15px;
-  padding: 18px 22px;
-  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--divider);
   transition: background 140ms ease;
 }
 
@@ -514,7 +587,6 @@ onMounted(loadReferences)
   width: 45px;
   height: 45px;
   flex: 0 0 auto;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
@@ -526,13 +598,13 @@ onMounted(loadReferences)
 }
 
 .sequence-badge span {
-  font-size: 0.55rem;
+  font-size: var(--text-xs);
 }
 
 .sequence-badge strong {
-  margin-top: 3px;
+  margin-top: 4px;
   color: var(--accent);
-  font-size: 0.83rem;
+  font-size: 0.8125rem;
   font-weight: 600;
 }
 
@@ -556,19 +628,19 @@ onMounted(loadReferences)
 }
 
 .set-title h3 {
-  font-size: 0.98rem;
+  font-size: 1rem;
 }
 
 .equipment-name {
   color: var(--muted-2);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .set-actions {
   display: flex;
   gap: 2px;
-  margin-top: -5px;
-  margin-right: -5px;
+  margin-top: -4px;
+  margin-right: -4px;
 }
 
 .delete-button:hover {
@@ -578,8 +650,8 @@ onMounted(loadReferences)
 .set-data {
   display: flex;
   flex-wrap: wrap;
-  gap: 26px;
-  margin-top: 11px;
+  gap: 24px;
+  margin-top: 12px;
 }
 
 .data-block {
@@ -589,34 +661,32 @@ onMounted(loadReferences)
 }
 
 .data-label {
-  color: var(--muted-2);
-  font-size: 0.6rem;
-  font-weight: 650;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
 }
 
 .data-block strong {
   color: var(--text-soft);
   font-family: var(--font-mono);
-  font-size: 0.83rem;
-  font-weight: 550;
+  font-size: 0.8125rem;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .data-block small {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
 .primary-data strong {
   color: var(--text);
-  font-size: 0.94rem;
+  font-size: 0.9375rem;
 }
 
 .times {
-  margin: 0 3px;
+  margin: 0 4px;
   color: var(--muted-2);
 }
 
@@ -624,16 +694,16 @@ onMounted(loadReferences)
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   margin-top: 12px;
 }
 
 .set-note {
   flex-basis: 100%;
-  padding: 8px 10px;
+  padding: 8px 8px;
   border-left: 2px solid var(--border-strong);
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   line-height: 1.55;
 }
 
@@ -678,20 +748,17 @@ onMounted(loadReferences)
     justify-content: space-between;
   }
 
-  .day-toolbar-right .badge {
-    flex: 1;
-  }
 
   .summary-grid {
-    gap: 9px;
+    gap: 8px;
   }
 
   .sets-header {
-    padding: 17px;
+    padding: 12px 16px;
   }
 
   .set-row {
-    gap: 11px;
+    gap: 12px;
     padding: 16px;
   }
 
@@ -702,11 +769,11 @@ onMounted(loadReferences)
   }
 
   .set-data {
-    gap: 15px;
+    gap: 16px;
   }
 
   .data-block strong {
-    font-size: 0.78rem;
+    font-size: 0.8125rem;
   }
 
   .primary-data {
@@ -714,7 +781,7 @@ onMounted(loadReferences)
   }
 
   .set-title h3 {
-    font-size: 0.92rem;
+    font-size: 0.9375rem;
   }
 }
 </style>

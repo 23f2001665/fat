@@ -45,14 +45,14 @@ const emit = defineEmits(['close', 'confirm'])
 .confirm-body {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
   padding: 4px 0 6px;
 }
 
 .confirm-body p {
-  padding-top: 3px;
+  padding-top: 4px;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   line-height: 1.65;
 }
 

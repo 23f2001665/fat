@@ -24,7 +24,7 @@ defineProps({
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 22px;
+  gap: 20px;
   padding-top: 4px;
 }
 
@@ -36,7 +36,7 @@ defineProps({
   max-width: 700px;
   margin-top: 8px;
   color: var(--muted);
-  font-size: 0.91rem;
+  font-size: 0.9375rem;
   line-height: 1.6;
 }
 
@@ -45,7 +45,7 @@ defineProps({
   flex: 0 0 auto;
   flex-wrap: wrap;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
 }
 
 @media (max-width: 760px) {
@@ -60,7 +60,8 @@ defineProps({
   }
 
   .page-actions :deep(.btn) {
-    flex: 1;
+    flex: 1 1 auto;
+    white-space: nowrap;
   }
 }
 </style>

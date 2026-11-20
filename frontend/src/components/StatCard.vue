@@ -32,22 +32,8 @@ defineProps({
 .stat-card {
   position: relative;
   min-height: 116px;
-  padding: 16px 17px;
+  padding: 16px 16px;
   overflow: hidden;
-}
-
-.stat-card::after {
-  position: absolute;
-  top: -30px;
-  right: -30px;
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  background: var(--tone-soft);
-  content: "";
-  filter: blur(2px);
-  opacity: 0.6;
-  pointer-events: none;
 }
 
 .tone-accent {
@@ -81,15 +67,13 @@ defineProps({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .stat-label {
   color: var(--muted);
-  font-size: 0.71rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--text-sm);
+  font-weight: 500;
 }
 
 .stat-icon {
@@ -108,8 +92,8 @@ defineProps({
   z-index: 1;
   display: flex;
   align-items: baseline;
-  gap: 5px;
-  margin-top: 11px;
+  gap: 4px;
+  margin-top: 12px;
 }
 
 .stat-value {
@@ -121,26 +105,26 @@ defineProps({
 
 .stat-unit {
   color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 550;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .stat-hint {
   position: relative;
   z-index: 1;
-  margin-top: 9px;
+  margin-top: 8px;
   color: var(--muted-2);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   line-height: 1.35;
 }
 
 .stat-card.compact {
   min-height: 86px;
-  padding: 13px 14px;
+  padding: 12px 16px;
 }
 
 .stat-card.compact .stat-main {
-  margin-top: 7px;
+  margin-top: 8px;
 }
 
 .stat-card.compact .stat-value {

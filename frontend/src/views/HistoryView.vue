@@ -9,6 +9,7 @@ import SearchField from '@/components/SearchField.vue'
 import StatCard from '@/components/StatCard.vue'
 import { getWorkoutHistory } from '@/api/workouts'
 import {
+  formatCompact,
   formatDatePretty,
   formatDateShort,
   formatNumber,
@@ -84,9 +85,8 @@ onMounted(loadHistory)
 <template>
   <div class="page">
     <PageHeader
-      eyebrow="Training archive"
       title="History"
-      description="Every workout date in one place. Open any day to revisit, edit, or add sets."
+      description="Every training day in one place. Open a day to review or edit it."
     >
       <template #actions>
         <button class="btn btn-secondary" type="button" :disabled="loading" @click="loadHistory">
@@ -117,24 +117,23 @@ onMounted(loadHistory)
         label="Sessions"
         :value="days.length"
         icon="calendar"
-        hint="Dates with recorded work"
+        tone="violet"
+        :hint="lastSession ? `Last on ${formatDatePretty(lastSession)}` : ''"
         compact
       />
       <StatCard
         label="Total sets"
         :value="totalSets"
         icon="dumbbell"
-        tone="info"
-        hint="Across all sessions"
+        :hint="days.length ? `≈ ${formatNumber(totalSets / days.length, 1)} per session` : ''"
         compact
       />
       <StatCard
         label="Volume"
-        :value="formatNumber(totalVolume, 1)"
+        :value="formatCompact(totalVolume)"
         unit="kg"
         icon="chartBar"
-        tone="violet"
-        hint="All recorded volume"
+        tone="info"
         compact
       />
       <StatCard
@@ -142,7 +141,6 @@ onMounted(loadHistory)
         :value="totalExercises"
         icon="library"
         tone="warning"
-        hint="Distinct movements used"
         compact
       />
     </div>
@@ -183,8 +181,10 @@ onMounted(loadHistory)
 
               <div class="day-main">
                 <div class="day-title">
-                  <h3>{{ formatDatePretty(day.date) }}</h3>
-                  <span class="badge badge-muted">{{ pluralize(day.set_count, 'set') }}</span>
+                  <h3>
+                    {{ pluralize(day.set_count, 'set') }}
+                    <span class="day-title-sub">· {{ pluralize(day.exercise_names.length, 'exercise') }}</span>
+                  </h3>
                 </div>
                 <div class="exercise-tags">
                   <span
@@ -245,7 +245,7 @@ onMounted(loadHistory)
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 13px;
+  gap: 12px;
 }
 
 .summary-skeleton {
@@ -260,19 +260,19 @@ onMounted(loadHistory)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 20px 22px;
-  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  padding: 20px 20px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .history-toolbar h2 {
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 .history-toolbar p {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
 }
 
 .month-list {
@@ -281,8 +281,8 @@ onMounted(loadHistory)
 }
 
 .month-group {
-  padding: 19px 22px 7px;
-  border-bottom: 1px solid var(--border);
+  padding: 20px 20px 8px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .month-group:last-child {
@@ -294,26 +294,24 @@ onMounted(loadHistory)
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .month-heading h3 {
   color: var(--text-soft);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .month-heading span {
   color: var(--muted-2);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 .day-list {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 
 .day-row {
@@ -321,8 +319,8 @@ onMounted(loadHistory)
   width: 100%;
   grid-template-columns: 56px minmax(0, 1fr) auto 22px;
   align-items: center;
-  gap: 15px;
-  padding: 11px 10px;
+  gap: 16px;
+  padding: 12px 8px;
   border: 1px solid transparent;
   border-radius: 13px;
   background: transparent;
@@ -351,24 +349,21 @@ onMounted(loadHistory)
 
 .date-weekday {
   color: var(--accent);
-  font-size: 0.56rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .date-block strong {
   margin: 4px 0 2px;
   font-family: var(--font-mono);
-  font-size: 1.13rem;
+  font-size: 1.125rem;
   font-weight: 600;
 }
 
 .date-month {
   color: var(--muted-2);
-  font-size: 0.55rem;
-  font-weight: 600;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .day-main {
@@ -379,18 +374,18 @@ onMounted(loadHistory)
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
 }
 
 .day-title h3 {
-  font-size: 0.87rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
 .exercise-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
   margin-top: 6px;
 }
 
@@ -398,7 +393,7 @@ onMounted(loadHistory)
   min-height: 22px;
   padding: 2px 8px;
   color: var(--muted);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
 }
 
 .more-chip {
@@ -417,17 +412,15 @@ onMounted(loadHistory)
 
 .volume-block span {
   color: var(--muted-2);
-  font-size: 0.58rem;
-  font-weight: 650;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .volume-block strong {
   color: var(--text-soft);
   font-family: var(--font-mono);
-  font-size: 0.8rem;
-  font-weight: 550;
+  font-size: 0.8125rem;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -449,29 +442,29 @@ onMounted(loadHistory)
 
 @media (max-width: 700px) {
   .summary-grid {
-    gap: 9px;
+    gap: 8px;
   }
 
   .history-toolbar {
     flex-direction: column;
     align-items: stretch;
-    padding: 17px;
+    padding: 16px;
   }
 
   .month-group {
-    padding: 16px 14px 4px;
+    padding: 16px 12px 4px;
   }
 
   .month-heading {
     align-items: flex-start;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
   }
 
   .day-row {
     grid-template-columns: 46px minmax(0, 1fr) 16px;
-    gap: 10px;
-    padding: 9px 5px;
+    gap: 8px;
+    padding: 8px 4px;
   }
 
   .date-block {
@@ -495,5 +488,10 @@ onMounted(loadHistory)
   .open-arrow {
     justify-self: end;
   }
+}
+
+.day-title-sub {
+  color: var(--muted);
+  font-weight: 500;
 }
 </style>

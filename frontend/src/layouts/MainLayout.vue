@@ -24,9 +24,6 @@ const navItems = computed(() => {
 })
 
 const authUser = computed(() => authState.user)
-const roleLabel = computed(() =>
-  authState.user?.role === 'admin' ? 'Admin' : 'Member',
-)
 const avatarInitials = computed(() => initials(authState.user?.name))
 
 function isActive(item) {
@@ -53,7 +50,6 @@ async function handleLogout() {
         </span>
       </RouterLink>
 
-      <div class="sidebar-label">Navigate</div>
       <nav class="main-nav" aria-label="Main navigation">
         <RouterLink
           v-for="item in navItems"
@@ -66,7 +62,6 @@ async function handleLogout() {
             <Icon :name="item.icon" :size="19" />
           </span>
           <span>{{ item.label }}</span>
-          <span class="nav-dot" />
         </RouterLink>
       </nav>
 
@@ -78,7 +73,7 @@ async function handleLogout() {
         </span>
         <div class="account-copy">
           <strong>{{ authUser?.name || 'Account' }}</strong>
-          <span>@{{ authUser?.username }} · {{ roleLabel }}</span>
+          <span>@{{ authUser?.username }}<template v-if="isAdmin"> · Admin</template></span>
         </div>
         <button
           class="btn btn-ghost btn-icon account-logout"
@@ -90,7 +85,6 @@ async function handleLogout() {
           <Icon name="logout" :size="17" />
         </button>
       </div>
-      <p class="version-line">FAT 2.0 · Flask + Vue</p>
     </aside>
 
     <div class="mobile-bar">
@@ -107,7 +101,7 @@ async function handleLogout() {
         <span class="mobile-avatar" :class="{ admin: isAdmin }">{{ avatarInitials }}</span>
         <div class="mobile-account-copy">
           <strong>{{ authUser?.name }}</strong>
-          <span>{{ roleLabel }}</span>
+          <span v-if="isAdmin">Admin</span>
         </div>
         <button
           class="btn btn-ghost btn-icon btn-sm"
@@ -164,8 +158,8 @@ async function handleLogout() {
   display: flex;
   width: var(--sidebar-width);
   flex-direction: column;
-  padding: 25px 18px 20px;
-  border-right: 1px solid var(--border);
+  padding: 24px 16px 20px;
+  border-right: 1px solid var(--divider);
   background:
     linear-gradient(180deg, rgba(94, 234, 212, 0.035), transparent 28%),
     rgba(10, 14, 20, 0.88);
@@ -175,8 +169,8 @@ async function handleLogout() {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 11px;
-  padding: 3px 7px 3px 3px;
+  gap: 12px;
+  padding: 4px 8px 4px 4px;
   color: var(--text);
 }
 
@@ -199,30 +193,22 @@ async function handleLogout() {
 }
 
 .brand-copy strong {
-  font-size: 1.15rem;
-  font-weight: 750;
+  font-size: 1.125rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
 }
 
 .brand-copy small {
   margin-top: 4px;
   color: var(--muted-2);
-  font-size: 0.62rem;
-  font-weight: 550;
+  font-size: 0.75rem;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.sidebar-label {
-  margin: 37px 12px 11px;
-  color: var(--muted-2);
-  font-size: 0.61rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-}
-
 .main-nav {
+  margin-top: 32px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -234,12 +220,12 @@ async function handleLogout() {
   align-items: center;
   gap: 12px;
   min-height: 45px;
-  padding: 8px 11px;
+  padding: 8px 12px;
   border: 1px solid transparent;
   border-radius: 11px;
   color: var(--muted);
-  font-size: 0.86rem;
-  font-weight: 550;
+  font-size: 0.875rem;
+  font-weight: 500;
   transition: all 160ms ease;
 }
 
@@ -262,19 +248,6 @@ async function handleLogout() {
   place-items: center;
 }
 
-.nav-dot {
-  width: 5px;
-  height: 5px;
-  margin-left: auto;
-  border-radius: 50%;
-  background: transparent;
-}
-
-.nav-link.active .nav-dot {
-  background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.08);
-}
-
 .sidebar-spacer {
   flex: 1;
 }
@@ -282,8 +255,8 @@ async function handleLogout() {
 .account-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px;
+  gap: 8px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: rgba(23, 33, 45, 0.5);
@@ -299,8 +272,8 @@ async function handleLogout() {
   background: var(--surface-2);
   color: var(--info);
   font-family: var(--font-mono);
-  font-size: 0.64rem;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 600;
   letter-spacing: 0.03em;
   place-items: center;
 }
@@ -322,8 +295,8 @@ async function handleLogout() {
 .account-copy strong {
   overflow: hidden;
   color: var(--text-soft);
-  font-size: 0.76rem;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -332,7 +305,7 @@ async function handleLogout() {
   overflow: hidden;
   margin-top: 2px;
   color: var(--muted-2);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -340,14 +313,6 @@ async function handleLogout() {
 .account-logout {
   flex: 0 0 auto;
   color: var(--muted-2);
-}
-
-.version-line {
-  margin-top: 16px;
-  color: #526177;
-  font-family: var(--font-mono);
-  font-size: 0.59rem;
-  text-align: center;
 }
 
 .app-main {
@@ -360,7 +325,7 @@ async function handleLogout() {
   width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: 35px 38px 60px;
+  padding: 36px 36px 60px;
 }
 
 .mobile-bar,
@@ -391,8 +356,8 @@ async function handleLogout() {
   }
 
   .content {
-    padding-right: 26px;
-    padding-left: 26px;
+    padding-right: 24px;
+    padding-left: 24px;
   }
 }
 
@@ -414,8 +379,8 @@ async function handleLogout() {
     height: 63px;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 18px;
-    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--divider);
     background: rgba(11, 15, 20, 0.82);
     backdrop-filter: blur(18px);
   }
@@ -431,7 +396,7 @@ async function handleLogout() {
   }
 
   .mobile-brand .brand-copy small {
-    font-size: 0.56rem;
+    font-size: 0.75rem;
   }
 
   .mobile-account {
@@ -449,8 +414,8 @@ async function handleLogout() {
     background: var(--surface-2);
     color: var(--info);
     font-family: var(--font-mono);
-    font-size: 0.58rem;
-    font-weight: 650;
+    font-size: 0.75rem;
+    font-weight: 600;
     place-items: center;
   }
 
@@ -471,7 +436,7 @@ async function handleLogout() {
   .mobile-account-copy strong {
     overflow: hidden;
     color: var(--text-soft);
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -479,7 +444,7 @@ async function handleLogout() {
   .mobile-account-copy span {
     margin-top: 2px;
     color: var(--muted-2);
-    font-size: 0.58rem;
+    font-size: 0.75rem;
     font-weight: 600;
   }
 
@@ -496,8 +461,8 @@ async function handleLogout() {
     z-index: 60;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 3px;
-    padding: 5px;
+    gap: 4px;
+    padding: 4px;
     border: 1px solid var(--border-strong);
     border-radius: 18px;
     background: rgba(18, 25, 35, 0.92);
@@ -510,13 +475,12 @@ async function handleLogout() {
     min-width: 0;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
-    padding: 7px 2px 5px;
+    gap: 4px;
+    padding: 8px 2px 4px;
     border-radius: 12px;
-    color: var(--muted-2);
-    font-size: 0.57rem;
-    font-weight: 650;
-    letter-spacing: 0.01em;
+    color: var(--muted);
+    font-size: 0.6875rem;
+    font-weight: 500;
     transition: all 150ms ease;
   }
 
@@ -536,10 +500,6 @@ async function handleLogout() {
   .content {
     padding-right: 12px;
     padding-left: 12px;
-  }
-
-  .bottom-link {
-    font-size: 0.52rem;
   }
 }
 </style>

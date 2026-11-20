@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue3-toastify'
 import EmptyState from '@/components/EmptyState.vue'
 import Icon from '@/components/Icon.vue'
@@ -47,6 +48,8 @@ const measurementFields = [
   { key: 'thigh_cm', label: 'Thigh', unit: 'cm' },
 ]
 
+const route = useRoute()
+const router = useRouter()
 const profile = ref(null)
 const series = ref(null)
 const loading = ref(true)
@@ -63,6 +66,9 @@ const user = computed(() => profile.value?.user || null)
 const metrics = computed(() => profile.value?.latest_metrics || {})
 const comparisons = computed(() => profile.value?.comparisons || [])
 const measurements = computed(() => profile.value?.measurements || [])
+const hasComparisonData = computed(() =>
+  comparisons.value.some((row) => row.current !== null && row.current !== undefined),
+)
 const measurementCount = computed(() => profile.value?.measurement_count || 0)
 const visibleMeasurements = computed(() =>
   showAllMeasurements.value ? measurements.value : measurements.value.slice(0, 6),
@@ -102,100 +108,36 @@ const bmiHint = computed(() => {
     : metrics.value.bmi_category
 })
 
-const metricCards = computed(() => [
-  {
-    label: 'Weight',
-    value: metrics.value.weight_kg !== null && metrics.value.weight_kg !== undefined
-      ? formatNumber(metrics.value.weight_kg, 1)
-      : '—',
-    unit: metrics.value.weight_kg !== null && metrics.value.weight_kg !== undefined ? 'kg' : '',
-    icon: 'scale',
-    tone: 'accent',
-    hint: latestHint.value,
-  },
-  {
-    label: 'BMI',
-    value:
-      metrics.value.bmi !== null && metrics.value.bmi !== undefined
-        ? formatNumber(metrics.value.bmi, 1)
-        : '—',
-    unit: '',
-    icon: 'target',
-    tone: 'info',
-    hint: bmiHint.value,
-  },
-  {
-    label: 'Body fat',
-    value:
-      metrics.value.body_fat_percentage !== null &&
-      metrics.value.body_fat_percentage !== undefined
-        ? formatNumber(metrics.value.body_fat_percentage, 1)
-        : '—',
-    unit:
-      metrics.value.body_fat_percentage !== null &&
-      metrics.value.body_fat_percentage !== undefined
-        ? '%'
-        : '',
-    icon: 'flame',
-    tone: 'warning',
-    hint: 'Latest recorded value',
-  },
-  {
-    label: 'Waist',
-    value:
-      metrics.value.waist_cm !== null && metrics.value.waist_cm !== undefined
-        ? formatNumber(metrics.value.waist_cm, 1)
-        : '—',
-    unit: metrics.value.waist_cm !== null && metrics.value.waist_cm !== undefined ? 'cm' : '',
-    icon: 'ruler',
-    tone: 'violet',
-    hint: 'Latest recorded value',
-  },
-  {
-    label: 'Chest',
-    value:
-      metrics.value.chest_cm !== null && metrics.value.chest_cm !== undefined
-        ? formatNumber(metrics.value.chest_cm, 1)
-        : '—',
-    unit: metrics.value.chest_cm !== null && metrics.value.chest_cm !== undefined ? 'cm' : '',
-    icon: 'shield',
-    tone: 'info',
-    hint: 'Latest recorded value',
-  },
-  {
-    label: 'Hip',
-    value:
-      metrics.value.hip_cm !== null && metrics.value.hip_cm !== undefined
-        ? formatNumber(metrics.value.hip_cm, 1)
-        : '—',
-    unit: metrics.value.hip_cm !== null && metrics.value.hip_cm !== undefined ? 'cm' : '',
-    icon: 'circle',
-    tone: 'accent',
-    hint: 'Latest recorded value',
-  },
-  {
-    label: 'Arm',
-    value:
-      metrics.value.arm_cm !== null && metrics.value.arm_cm !== undefined
-        ? formatNumber(metrics.value.arm_cm, 1)
-        : '—',
-    unit: metrics.value.arm_cm !== null && metrics.value.arm_cm !== undefined ? 'cm' : '',
-    icon: 'dumbbell',
-    tone: 'warning',
-    hint: 'Latest recorded value',
-  },
-  {
-    label: 'Thigh',
-    value:
-      metrics.value.thigh_cm !== null && metrics.value.thigh_cm !== undefined
-        ? formatNumber(metrics.value.thigh_cm, 1)
-        : '—',
-    unit: metrics.value.thigh_cm !== null && metrics.value.thigh_cm !== undefined ? 'cm' : '',
-    icon: 'flame',
-    tone: 'danger',
-    hint: 'Latest recorded value',
-  },
-])
+// One icon + tone per kind of metric so cards read consistently:
+// body composition metrics get their own icons, all girths share the ruler.
+const metricCardDefs = [
+  { key: 'weight_kg', label: 'Weight', unit: 'kg', icon: 'scale', tone: 'accent' },
+  { key: 'bmi', label: 'BMI', unit: '', icon: 'target', tone: 'info' },
+  { key: 'body_fat_percentage', label: 'Body fat', unit: '%', icon: 'flame', tone: 'warning' },
+  { key: 'waist_cm', label: 'Waist', unit: 'cm', icon: 'ruler', tone: 'violet' },
+  { key: 'chest_cm', label: 'Chest', unit: 'cm', icon: 'ruler', tone: 'violet' },
+  { key: 'hip_cm', label: 'Hip', unit: 'cm', icon: 'ruler', tone: 'violet' },
+  { key: 'arm_cm', label: 'Arm', unit: 'cm', icon: 'ruler', tone: 'violet' },
+  { key: 'thigh_cm', label: 'Thigh', unit: 'cm', icon: 'ruler', tone: 'violet' },
+]
+
+function hasValue(value) {
+  return value !== null && value !== undefined
+}
+
+const metricCards = computed(() =>
+  metricCardDefs
+    .filter((def) => hasValue(metrics.value[def.key]))
+    .map((def) => ({
+      ...def,
+      value: formatNumber(metrics.value[def.key], 1),
+      hint: def.key === 'bmi' ? bmiHint.value : def.key === 'weight_kg' ? latestHint.value : '',
+    })),
+)
+
+const untrackedMetrics = computed(() =>
+  metricCardDefs.filter((def) => !hasValue(metrics.value[def.key])).map((def) => def.label),
+)
 
 const chartDescription = computed(() => {
   return `${currentMetric.value.label} from actual measurement snapshots. Dates without a record are never filled in.`
@@ -271,6 +213,11 @@ async function handleProfileSaved() {
 watch([selectedMetric, selectedPeriod], loadSeries)
 
 onMounted(async () => {
+  // Deep link from the getting-started checklist opens the measurement dialog.
+  if (route.query.add === 'measurement') {
+    measurementModalOpen.value = true
+    router.replace({ name: 'profile' })
+  }
   await loadProfile()
   if (!errorMessage.value) await loadSeries()
 })
@@ -279,18 +226,13 @@ onMounted(async () => {
 <template>
   <div class="page">
     <PageHeader
-      eyebrow="Athlete profile"
       title="Profile"
-      description="Your account and body measurement record. Workouts and snapshots are private to your account, and BMI is only derived from values recorded together."
+      description="Your account and body measurements, private to you."
     >
       <template #actions>
         <button class="btn btn-secondary" type="button" @click="editModalOpen = true">
           <Icon name="edit" :size="16" />
           Edit profile
-        </button>
-        <button class="btn btn-secondary" type="button" @click="passwordModalOpen = true">
-          <Icon name="key" :size="16" />
-          Password
         </button>
         <button class="btn btn-primary" type="button" @click="measurementModalOpen = true">
           <Icon name="plus" :size="16" />
@@ -329,10 +271,7 @@ onMounted(async () => {
               {{ user.role === 'admin' ? 'Administrator' : 'Member' }}
             </span>
           </div>
-          <p class="hero-subtitle">
-            @{{ user.username }} · Your workouts, measurements and progress are private to
-            this account.
-          </p>
+          <p class="hero-subtitle">@{{ user.username }}</p>
           <div class="hero-meta">
             <span class="chip">
               <Icon name="calendar" :size="13" />
@@ -353,15 +292,11 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="hero-stats">
-          <div class="hero-stat">
-            <span>Latest snapshot</span>
-            <strong>{{ latestSnapshot ? formatDatePretty(latestSnapshot) : '—' }}</strong>
-          </div>
-          <div class="hero-stat">
-            <span>Profile height</span>
-            <strong>{{ user.height_cm ? `${formatNumber(user.height_cm, 1)} cm` : '—' }}</strong>
-          </div>
+        <div class="hero-actions">
+          <button class="btn btn-ghost btn-sm" type="button" @click="passwordModalOpen = true">
+            <Icon name="key" :size="14" />
+            Change password
+          </button>
         </div>
       </section>
 
@@ -369,15 +304,14 @@ onMounted(async () => {
         <header class="section-heading">
           <div>
             <h2>Latest measurements</h2>
-            <p>Each metric uses its own most recent observation; missing values stay blank.</p>
+            <p>Most recent value of each metric.</p>
           </div>
-          <span class="badge">{{ latestSnapshot ? formatDatePretty(latestSnapshot) : 'No data' }}</span>
         </header>
 
-        <div class="metric-grid">
+        <div v-if="metricCards.length" class="metric-grid">
           <StatCard
             v-for="card in metricCards"
-            :key="card.label"
+            :key="card.key"
             :label="card.label"
             :value="card.value"
             :unit="card.unit"
@@ -387,13 +321,19 @@ onMounted(async () => {
             compact
           />
         </div>
+        <p v-if="untrackedMetrics.length" class="untracked-line">
+          <span>Not tracked yet: {{ untrackedMetrics.join(', ') }}</span>
+          <button class="btn btn-ghost btn-sm" type="button" @click="measurementModalOpen = true">
+            <Icon name="plus" :size="14" />
+            Add measurement
+          </button>
+        </p>
       </section>
 
       <div class="analysis-grid">
         <section class="chart-card card">
           <header class="chart-header">
             <div class="chart-heading">
-              <p class="eyebrow">Measurement trend</p>
               <h2>{{ currentMetric.label }} over time</h2>
               <p>{{ chartDescription }}</p>
             </div>
@@ -446,12 +386,11 @@ onMounted(async () => {
 
         <aside class="comparison-card card">
           <header class="comparison-header">
-            <p class="eyebrow">Delta</p>
             <h2>Changes since previous observation</h2>
             <p>Each metric compares its two most recent recorded values, independently.</p>
           </header>
 
-          <div v-if="comparisons.length" class="comparison-list">
+          <div v-if="hasComparisonData" class="comparison-list">
             <div class="comparison-head">
               <span>Metric</span>
               <span>Current</span>
@@ -570,7 +509,7 @@ onMounted(async () => {
             type="button"
             @click="showAllMeasurements = !showAllMeasurements"
           >
-            <Icon :name="showAllMeasurements ? 'chevronLeft' : 'chevronRight'" :size="14" />
+            <Icon :name="showAllMeasurements ? 'arrowUp' : 'arrowDown'" :size="14" />
             {{ showAllMeasurements ? 'Show fewer snapshots' : `Show all ${measurementCount} snapshots` }}
           </button>
         </footer>
@@ -605,7 +544,7 @@ onMounted(async () => {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 12px;
 }
 
@@ -646,7 +585,7 @@ onMounted(async () => {
     var(--surface-2);
   color: var(--accent);
   font-family: var(--font-mono);
-  font-size: 1.45rem;
+  font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   place-items: center;
@@ -661,17 +600,17 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
 }
 
 .hero-title h2 {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
 }
 
 .hero-subtitle {
   margin-top: 6px;
   color: var(--muted);
-  font-size: 0.79rem;
+  font-size: 0.8125rem;
   line-height: 1.55;
 }
 
@@ -679,45 +618,20 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
-.hero-stats {
+.hero-actions {
   position: relative;
   z-index: 1;
   display: flex;
-  flex: 0 0 auto;
-  gap: 24px;
-  padding-left: 24px;
-  border-left: 1px solid var(--border);
-}
-
-.hero-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.hero-stat span {
-  color: var(--muted-2);
-  font-size: 0.63rem;
-  font-weight: 650;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.hero-stat strong {
-  color: var(--text-soft);
-  font-family: var(--font-mono);
-  font-size: 0.83rem;
-  font-weight: 550;
-  white-space: nowrap;
+  align-self: flex-start;
 }
 
 .metrics-section {
   display: flex;
   flex-direction: column;
-  gap: 13px;
+  gap: 12px;
 }
 
 .analysis-grid {
@@ -737,8 +651,8 @@ onMounted(async () => {
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
-  padding: 21px 22px 15px;
+  gap: 16px;
+  padding: 20px 20px 16px;
 }
 
 .chart-heading {
@@ -746,13 +660,13 @@ onMounted(async () => {
 }
 
 .chart-heading h2 {
-  font-size: 1.1rem;
+  font-size: 1.125rem;
 }
 
 .chart-heading > p:last-child {
   margin-top: 6px;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   line-height: 1.6;
 }
 
@@ -760,7 +674,7 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 9px;
+  gap: 8px;
 }
 
 .metric-field {
@@ -770,23 +684,23 @@ onMounted(async () => {
 .metric-field .select {
   height: 38px;
   min-height: 38px;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  font-size: 0.78rem;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 0.8125rem;
 }
 
 .period-tabs {
-  padding: 3px;
+  padding: 4px;
 }
 
 .period-tabs .segment {
   min-height: 31px;
-  padding: 5px 9px;
-  font-size: 0.7rem;
+  padding: 4px 8px;
+  font-size: 0.75rem;
 }
 
 .chart-body {
-  padding: 2px 22px 16px;
+  padding: 2px 20px 16px;
 }
 
 .chart-loading {
@@ -803,17 +717,17 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 0 22px;
+  margin: 0 20px;
   padding: 12px 0 16px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--divider);
   color: var(--muted-2);
-  font-size: 0.67rem;
+  font-size: 0.75rem;
 }
 
 .chart-range {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .comparison-skeleton {
@@ -821,23 +735,23 @@ onMounted(async () => {
 }
 
 .comparison-header {
-  padding: 21px 22px 15px;
-  border-bottom: 1px solid var(--border);
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .comparison-header h2 {
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 .comparison-header p:last-child {
   margin-top: 6px;
   color: var(--muted);
-  font-size: 0.73rem;
+  font-size: 0.75rem;
   line-height: 1.55;
 }
 
 .comparison-list {
-  padding: 8px 22px 5px;
+  padding: 8px 20px 4px;
 }
 
 .comparison-head,
@@ -849,42 +763,40 @@ onMounted(async () => {
 }
 
 .comparison-head {
-  padding: 9px 0 7px;
+  padding: 8px 0 8px;
   color: var(--muted-2);
-  font-size: 0.57rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .comparison-row {
   min-height: 36px;
-  padding: 7px 0;
+  padding: 8px 0;
   border-top: 1px solid rgba(38, 50, 67, 0.62);
 }
 
 .comparison-label {
   color: var(--text-soft);
   font-size: 0.75rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .comparison-current {
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 550;
+  font-size: 0.75rem;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .comparison-delta {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
   color: var(--muted-2);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   white-space: nowrap;
 }
 
@@ -900,28 +812,28 @@ onMounted(async () => {
   overflow: hidden;
   color: var(--muted-2);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .comparison-empty {
-  padding: 24px 22px;
+  padding: 24px 20px;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
 }
 
 .comparison-note {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
-  margin: 10px 22px 18px;
-  padding: 10px 11px;
+  gap: 8px;
+  margin: 8px 20px 16px;
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface-2);
   color: var(--muted-2);
-  font-size: 0.67rem;
+  font-size: 0.75rem;
   line-height: 1.5;
 }
 
@@ -939,20 +851,20 @@ onMounted(async () => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
-  padding: 21px 22px;
-  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  padding: 20px 20px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .history-header h2 {
-  font-size: 1.08rem;
+  font-size: 1.125rem;
 }
 
 .history-header p {
   max-width: 650px;
   margin-top: 6px;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   line-height: 1.55;
 }
 
@@ -971,9 +883,9 @@ onMounted(async () => {
 .measurement-row {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 16px 22px;
-  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .measurement-row:last-child {
@@ -1004,10 +916,8 @@ onMounted(async () => {
 .measurement-month {
   margin-top: 4px;
   color: var(--muted-2);
-  font-size: 0.55rem;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .measurement-main {
@@ -1023,23 +933,23 @@ onMounted(async () => {
 }
 
 .measurement-topline h3 {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
 .measurement-values {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 9px;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .measurement-value {
   display: inline-flex;
   align-items: baseline;
-  gap: 5px;
+  gap: 4px;
   min-height: 26px;
-  padding: 3px 9px;
+  padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface-2);
@@ -1047,34 +957,32 @@ onMounted(async () => {
 
 .measurement-value span {
   color: var(--muted-2);
-  font-size: 0.6rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .measurement-value strong {
   color: var(--text-soft);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 550;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .measurement-empty {
-  margin-top: 7px;
+  margin-top: 8px;
   color: var(--muted-2);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
 
 .measurement-notes {
   display: flex;
   align-items: flex-start;
-  gap: 5px;
-  margin-top: 9px;
-  padding-left: 9px;
+  gap: 4px;
+  margin-top: 8px;
+  padding-left: 8px;
   border-left: 2px solid var(--border-strong);
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.55;
 }
 
@@ -1086,8 +994,8 @@ onMounted(async () => {
 .history-footer {
   display: flex;
   justify-content: center;
-  padding: 13px;
-  border-top: 1px solid var(--border);
+  padding: 12px;
+  border-top: 1px solid var(--divider);
 }
 
 @media (max-width: 1200px) {
@@ -1109,52 +1017,42 @@ onMounted(async () => {
     flex-wrap: wrap;
   }
 
-  .hero-stats {
-    width: 100%;
-    padding-top: 16px;
-    padding-left: 0;
-    border-top: 1px solid var(--border);
-    border-left: 0;
+  .hero-main {
+    flex: 1 1 220px;
   }
 
-  .hero-stat {
-    flex: 1;
+  /* Account actions drop below the identity block instead of squeezing it. */
+  .hero-actions {
+    width: 100%;
+    padding-top: 12px;
+    border-top: 1px solid var(--divider);
   }
 }
 
 @media (max-width: 760px) {
   .metric-grid {
-    gap: 9px;
+    gap: 8px;
   }
 
   .profile-hero {
-    gap: 14px;
-    padding: 18px;
+    gap: 12px;
+    padding: 16px;
   }
 
   .avatar {
     width: 58px;
     height: 58px;
     border-radius: 17px;
-    font-size: 1.1rem;
+    font-size: 1.125rem;
   }
 
   .hero-title h2 {
-    font-size: 1.15rem;
-  }
-
-  .hero-stats {
-    gap: 14px;
-  }
-
-  .hero-stat strong {
-    font-size: 0.76rem;
-    white-space: normal;
+    font-size: 1.125rem;
   }
 
   .chart-header {
     flex-direction: column;
-    padding: 18px 17px 13px;
+    padding: 16px 16px 12px;
   }
 
   .chart-controls {
@@ -1166,19 +1064,19 @@ onMounted(async () => {
   }
 
   .chart-body {
-    padding: 2px 15px 12px;
+    padding: 2px 16px 12px;
   }
 
   .chart-footer {
-    margin: 0 17px;
+    margin: 0 16px;
   }
 
   .comparison-header {
-    padding: 18px 17px 13px;
+    padding: 16px 16px 12px;
   }
 
   .comparison-list {
-    padding: 6px 17px 4px;
+    padding: 6px 16px 4px;
   }
 
   .comparison-head,
@@ -1192,23 +1090,37 @@ onMounted(async () => {
   }
 
   .comparison-note {
-    margin-right: 17px;
-    margin-left: 17px;
+    margin-right: 16px;
+    margin-left: 16px;
   }
 
   .history-header {
     flex-direction: column;
-    padding: 17px;
+    padding: 16px;
   }
 
   .measurement-row {
-    gap: 11px;
-    padding: 14px 17px;
+    gap: 12px;
+    padding: 12px 16px;
   }
 
   .measurement-date {
     width: 42px;
     height: 46px;
   }
+}
+
+.untracked-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 8px 8px 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: var(--text-sm);
 }
 </style>

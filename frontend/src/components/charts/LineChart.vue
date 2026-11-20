@@ -231,6 +231,6 @@ svg {
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius);
   color: var(--muted-2);
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
 }
 </style>

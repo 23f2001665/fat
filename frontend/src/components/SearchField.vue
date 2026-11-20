@@ -53,8 +53,8 @@ defineEmits(['update:modelValue'])
   height: 40px;
   min-height: 40px;
   padding-left: 36px;
-  padding-right: 34px;
-  font-size: 0.82rem;
+  padding-right: 32px;
+  font-size: 0.8125rem;
 }
 
 .search-input::-webkit-search-cancel-button {

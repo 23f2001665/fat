@@ -130,7 +130,7 @@ function formatValue(value) {
 
 .donut-center strong {
   font-family: var(--font-mono);
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 600;
   letter-spacing: -0.04em;
 }
@@ -138,10 +138,8 @@ function formatValue(value) {
 .donut-center span {
   margin-top: 2px;
   color: var(--muted-2);
-  font-size: 0.62rem;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .legend {
@@ -154,9 +152,9 @@ function formatValue(value) {
   display: grid;
   grid-template-columns: 9px minmax(80px, 1fr) auto auto;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   min-height: 27px;
-  padding-bottom: 7px;
+  padding-bottom: 8px;
   border-bottom: 1px solid rgba(38, 50, 67, 0.55);
 }
 
@@ -173,7 +171,7 @@ function formatValue(value) {
 .legend-label {
   overflow: hidden;
   color: var(--text-soft);
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -181,7 +179,7 @@ function formatValue(value) {
 .legend-value {
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   white-space: nowrap;
 }
 
@@ -189,7 +187,7 @@ function formatValue(value) {
   min-width: 31px;
   color: var(--muted-2);
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   text-align: right;
 }
 
@@ -200,13 +198,13 @@ function formatValue(value) {
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius);
   color: var(--muted-2);
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
 }
 
 @media (max-width: 740px) {
   .donut-layout {
     grid-template-columns: 1fr;
-    gap: 22px;
+    gap: 20px;
   }
 
   .donut-wrap {

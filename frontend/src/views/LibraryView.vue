@@ -23,7 +23,7 @@ import { pluralize } from '@/utils/format'
 const tabs = [
   { key: 'exercises', label: 'Exercises', icon: 'dumbbell' },
   { key: 'muscles', label: 'Muscle groups', icon: 'target' },
-  { key: 'equipment', label: 'Equipment', icon: 'library' },
+  { key: 'equipment', label: 'Equipment', icon: 'kettlebell' },
 ]
 
 const activeTab = ref('exercises')
@@ -45,8 +45,8 @@ const currentTab = computed(() => tabs.find((tab) => tab.key === activeTab.value
 
 const pageDescription = computed(() =>
   isAdmin.value
-    ? 'Manage the exercises, muscle groups, and equipment that power logging and analytics. Historical records always keep their references.'
-    : 'Browse the shared exercise catalogue used for logging and analytics. Only administrators can change these reference records.',
+    ? 'Exercises, muscle groups and equipment used for logging and analytics.'
+    : 'The shared exercise catalogue used for logging and analytics.',
 )
 
 const muscleUsage = computed(() => {
@@ -269,7 +269,6 @@ onMounted(() => loadAll())
 <template>
   <div class="page">
     <PageHeader
-      eyebrow="Reference data"
       title="Library"
       :description="pageDescription"
     >
@@ -284,14 +283,6 @@ onMounted(() => loadAll())
         </button>
       </template>
     </PageHeader>
-
-    <div v-if="!isAdmin" class="notice read-only-notice">
-      <Icon name="shield" :size="18" class="notice-icon" />
-      <span>
-        You are browsing the shared library in read-only mode. An administrator manages
-        exercises, muscle groups and equipment for everyone.
-      </span>
-    </div>
 
     <div v-if="errorMessage" class="notice notice-danger">
       <Icon name="alert" :size="18" class="notice-icon" />
@@ -310,7 +301,7 @@ onMounted(() => loadAll())
         label="Exercises"
         :value="counts.exercises.active"
         icon="dumbbell"
-        :hint="`${counts.exercises.total} total · ${counts.exercises.total - counts.exercises.active} inactive`"
+        :hint="`Active of ${counts.exercises.total}`"
         compact
       />
       <StatCard
@@ -318,15 +309,15 @@ onMounted(() => loadAll())
         :value="counts.muscles.active"
         icon="target"
         tone="info"
-        :hint="`${counts.muscles.total} total · ${counts.muscles.total - counts.muscles.active} inactive`"
+        :hint="`Active of ${counts.muscles.total}`"
         compact
       />
       <StatCard
         label="Equipment"
         :value="counts.equipment.active"
-        icon="library"
+        icon="kettlebell"
         tone="violet"
-        :hint="`${counts.equipment.total} total · No Equipment reserved`"
+        :hint="`Active of ${counts.equipment.total}`"
         compact
       />
       <StatCard
@@ -334,7 +325,7 @@ onMounted(() => loadAll())
         :value="inactiveCount"
         icon="shield"
         tone="warning"
-        hint="Kept for historical records"
+        hint="Kept for past records"
         compact
       />
     </div>
@@ -489,7 +480,7 @@ onMounted(() => loadAll())
           :class="{ inactive: !item.is_active, reserved: item.is_reserved }"
         >
           <div class="row-icon equipment-icon">
-            <Icon name="library" :size="18" />
+            <Icon name="kettlebell" :size="18" />
           </div>
 
           <div class="row-main">
@@ -583,7 +574,7 @@ onMounted(() => loadAll())
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 13px;
+  gap: 12px;
 }
 
 .summary-skeleton {
@@ -595,8 +586,8 @@ onMounted(() => loadAll())
 }
 
 .library-tabs {
-  padding: 15px 18px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px 16px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .tab-bar {
@@ -606,21 +597,21 @@ onMounted(() => loadAll())
 .tab-button {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding-right: 13px;
-  padding-left: 13px;
+  gap: 8px;
+  padding-right: 12px;
+  padding-left: 12px;
 }
 
 .tab-count {
   display: inline-grid;
   min-width: 20px;
   height: 19px;
-  padding: 0 5px;
+  padding: 0 4px;
   border-radius: 6px;
   background: rgba(148, 163, 184, 0.11);
   color: var(--muted-2);
   font-family: var(--font-mono);
-  font-size: 0.61rem;
+  font-size: 0.75rem;
   place-items: center;
 }
 
@@ -634,8 +625,8 @@ onMounted(() => loadAll())
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
-  padding: 20px 22px 14px;
+  gap: 16px;
+  padding: 20px 20px 12px;
 }
 
 .toolbar-copy {
@@ -643,13 +634,13 @@ onMounted(() => loadAll())
 }
 
 .toolbar-copy h2 {
-  font-size: 1.12rem;
+  font-size: 1.125rem;
 }
 
 .toolbar-copy p {
   margin-top: 6px;
   color: var(--muted);
-  font-size: 0.79rem;
+  font-size: 0.8125rem;
   line-height: 1.6;
 }
 
@@ -657,16 +648,16 @@ onMounted(() => loadAll())
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
 }
 
 .list-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 22px 12px;
+  gap: 8px;
+  padding: 0 20px 12px;
   color: var(--muted-2);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 .meta-search {
@@ -676,15 +667,15 @@ onMounted(() => loadAll())
 .library-list {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--divider);
 }
 
 .library-row {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 16px 22px;
-  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--divider);
   transition: background 140ms ease;
 }
 
@@ -733,31 +724,31 @@ onMounted(() => loadAll())
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
 }
 
 .row-heading h3 {
-  font-size: 0.93rem;
+  font-size: 0.9375rem;
 }
 
 .row-description {
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   line-height: 1.55;
 }
 
 .muscle-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
   margin-top: 8px;
 }
 
 .muscle-chip {
   min-height: 22px;
   padding: 2px 8px;
-  font-size: 0.64rem;
+  font-size: 0.75rem;
 }
 
 .muscle-chip.primary {
@@ -777,7 +768,7 @@ onMounted(() => loadAll())
   border-radius: 4px;
   background: rgba(148, 163, 184, 0.13);
   font-family: var(--font-mono);
-  font-size: 0.53rem;
+  font-size: 0.75rem;
   font-weight: 700;
   place-items: center;
 }
@@ -790,7 +781,7 @@ onMounted(() => loadAll())
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   padding-top: 4px;
 }
 
@@ -802,7 +793,7 @@ onMounted(() => loadAll())
 
 @media (max-width: 760px) {
   .summary-grid {
-    gap: 9px;
+    gap: 8px;
   }
 
   .library-tabs {
@@ -817,7 +808,7 @@ onMounted(() => loadAll())
 
   .library-toolbar {
     flex-direction: column;
-    padding: 17px 17px 12px;
+    padding: 16px 16px 12px;
   }
 
   .toolbar-controls {
@@ -830,13 +821,13 @@ onMounted(() => loadAll())
   }
 
   .list-meta {
-    padding: 0 17px 10px;
+    padding: 0 16px 8px;
   }
 
   .library-row {
     flex-wrap: wrap;
-    gap: 11px;
-    padding: 15px 17px;
+    gap: 12px;
+    padding: 16px 16px;
   }
 
   .row-main {
@@ -850,7 +841,7 @@ onMounted(() => loadAll())
   }
 
   .row-heading h3 {
-    font-size: 0.88rem;
+    font-size: 0.875rem;
   }
 }
 </style>

@@ -55,9 +55,8 @@ onMounted(() => loadUsers())
 <template>
   <div class="page">
     <PageHeader
-      eyebrow="Administration"
       title="Users"
-      description="Manage who can sign in to this tracker. Members keep their own workouts and measurements; administrators also maintain the shared library."
+      description="Manage who can sign in. Administrators also maintain the shared library."
     >
       <template #actions>
         <button class="btn btn-secondary" type="button" :disabled="loading" @click="loadUsers()">
@@ -227,7 +226,7 @@ onMounted(() => loadUsers())
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 13px;
+  gap: 12px;
 }
 
 .summary-skeleton {
@@ -242,20 +241,20 @@ onMounted(() => loadUsers())
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
-  padding: 21px 22px;
-  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  padding: 20px 20px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .users-card-header h2 {
-  font-size: 1.08rem;
+  font-size: 1.125rem;
 }
 
 .users-card-header p {
   max-width: 660px;
   margin-top: 6px;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
   line-height: 1.6;
 }
 
@@ -266,8 +265,8 @@ onMounted(() => loadUsers())
 
 .users-table th,
 .users-table td {
-  padding-right: 22px;
-  padding-left: 22px;
+  padding-right: 20px;
+  padding-left: 20px;
 }
 
 .users-table td {
@@ -277,7 +276,7 @@ onMounted(() => loadUsers())
 .user-cell {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 12px;
 }
 
 .user-avatar {
@@ -290,8 +289,8 @@ onMounted(() => loadUsers())
   background: var(--surface-2);
   color: var(--info);
   font-family: var(--font-mono);
-  font-size: 0.66rem;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 600;
   letter-spacing: 0.03em;
   place-items: center;
 }
@@ -311,19 +310,19 @@ onMounted(() => loadUsers())
 
 .user-copy strong {
   color: var(--text);
-  font-size: 0.84rem;
-  font-weight: 650;
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 .you-badge {
   min-height: 20px;
-  padding: 1px 7px;
-  font-size: 0.6rem;
+  padding: 1px 8px;
+  font-size: 0.75rem;
 }
 
 .username {
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.75rem;
 }
 
 .actions-heading,
@@ -344,18 +343,18 @@ onMounted(() => loadUsers())
 
 @media (max-width: 760px) {
   .summary-grid {
-    gap: 9px;
+    gap: 8px;
   }
 
   .users-card-header {
     flex-direction: column;
-    padding: 17px;
+    padding: 16px;
   }
 
   .users-table th,
   .users-table td {
-    padding-right: 14px;
-    padding-left: 14px;
+    padding-right: 12px;
+    padding-left: 12px;
   }
 }
 </style>

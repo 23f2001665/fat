@@ -98,7 +98,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 22px;
+  padding: 20px;
   background: rgba(4, 7, 11, 0.74);
   backdrop-filter: blur(8px);
 }
@@ -134,8 +134,8 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 23px 24px 17px;
-  border-bottom: 1px solid var(--border);
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .modal-heading {
@@ -143,30 +143,28 @@ onBeforeUnmount(() => {
 }
 
 .modal-subtitle {
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   color: var(--accent);
-  font-size: 0.66rem;
-  font-weight: 750;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .modal-header h2 {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
 }
 
 .modal-body {
   flex: 1;
-  padding: 22px 24px;
+  padding: 20px 24px;
   overflow-y: auto;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
   padding: 16px 24px 20px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--divider);
   background: rgba(11, 15, 20, 0.28);
 }
 
@@ -209,11 +207,11 @@ onBeforeUnmount(() => {
   }
 
   .modal-header {
-    padding: 20px 18px 15px;
+    padding: 20px 16px 16px;
   }
 
   .modal-body {
-    padding: 18px;
+    padding: 16px;
   }
 
   .modal-footer {

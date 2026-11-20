@@ -276,19 +276,19 @@ async function submit() {
 .measurement-form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .snapshot-note {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-2);
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .snapshot-note :deep(svg) {
@@ -301,7 +301,7 @@ async function submit() {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 15px;
+  padding: 12px 16px;
   border: 1px solid var(--accent-line);
   border-radius: 12px;
   background: var(--accent-soft);
@@ -310,24 +310,24 @@ async function submit() {
 .bmi-preview div {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
 }
 
 .bmi-preview span {
-  color: #9adfd7;
-  font-size: 0.72rem;
+  color: var(--muted);
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .bmi-preview strong {
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 1.15rem;
+  font-size: 1.125rem;
   font-weight: 600;
 }
 
 .girth-section {
-  padding: 15px;
+  padding: 16px;
   border: 1px solid var(--border);
   border-radius: 13px;
   background: var(--surface-2);
@@ -342,11 +342,11 @@ async function submit() {
 }
 
 .girth-heading h3 {
-  font-size: 0.84rem;
+  font-size: 0.8125rem;
 }
 
 .girth-heading span {
   color: var(--muted-2);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 </style>

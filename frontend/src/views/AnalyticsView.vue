@@ -11,6 +11,7 @@ import LineChart from '@/components/charts/LineChart.vue'
 import { getAnalytics } from '@/api/analytics'
 import { getExercises, getMuscleGroups } from '@/api/library'
 import {
+  formatCompact,
   formatDatePretty,
   formatNumber,
   formatWeekLabel,
@@ -175,9 +176,8 @@ onMounted(() => {
 <template>
   <div class="page">
     <PageHeader
-      eyebrow="Training intelligence"
       title="Analytics"
-      description="A factual view of what you have recorded. No missing days are invented and no records are interpolated."
+      description="Trends built only from the sets you logged. Nothing is estimated."
     >
       <template #actions>
         <button class="btn btn-secondary" type="button" :disabled="loading" @click="loadReport">
@@ -281,9 +281,10 @@ onMounted(() => {
       <div class="summary-grid">
         <StatCard
           label="Total volume"
-          :value="formatNumber(exerciseStats.total_volume || 0, 1)"
+          :value="formatCompact(exerciseStats.total_volume || 0)"
           unit="kg"
           icon="chartBar"
+          tone="info"
           hint="Weight × effective reps"
           compact
         />
@@ -291,8 +292,6 @@ onMounted(() => {
           label="Sets"
           :value="exerciseStats.total_sets || 0"
           icon="dumbbell"
-          tone="info"
-          hint="Recorded sets in range"
           compact
         />
         <StatCard
@@ -309,7 +308,6 @@ onMounted(() => {
           :unit="exerciseStats.max_weight !== null ? 'kg' : ''"
           icon="flame"
           tone="warning"
-          hint="Maximum recorded weight"
           compact
         />
         <StatCard
@@ -317,8 +315,7 @@ onMounted(() => {
           :value="exerciseStats.average_weight !== null ? formatNumber(exerciseStats.average_weight, 2) : '—'"
           :unit="exerciseStats.average_weight !== null ? 'kg' : ''"
           icon="scale"
-          tone="info"
-          hint="Across sets in range"
+          tone="warning"
           compact
         />
         <StatCard
@@ -333,7 +330,6 @@ onMounted(() => {
       <section class="chart-card card">
         <header class="chart-header">
           <div class="chart-heading">
-            <p class="eyebrow">Visual breakdown</p>
             <h2>{{ chartTitle }}</h2>
             <p>{{ chartDescription }}</p>
           </div>
@@ -409,7 +405,6 @@ onMounted(() => {
         <section class="muscle-card card">
           <header class="section-header">
             <div>
-              <p class="eyebrow">Attribution</p>
               <h2>Muscle group breakdown</h2>
               <p>Primary work counts 100% of set volume; secondary work counts 50%.</p>
             </div>
@@ -487,7 +482,7 @@ onMounted(() => {
 
 <style scoped>
 .filter-panel {
-  padding: 17px 18px 0;
+  padding: 16px 16px 0;
   overflow: hidden;
 }
 
@@ -496,26 +491,26 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 18px;
+  gap: 16px;
 }
 
 .period-group {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 
 .filter-label {
   color: var(--text-soft);
   font-size: 0.75rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .select-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 10px;
+  gap: 8px;
 }
 
 .compact-field {
@@ -527,7 +522,7 @@ onMounted(() => {
   min-height: 40px;
   padding-top: 6px;
   padding-bottom: 6px;
-  font-size: 0.79rem;
+  font-size: 0.8125rem;
 }
 
 .clear-filters {
@@ -538,9 +533,9 @@ onMounted(() => {
 .custom-range {
   display: flex;
   align-items: flex-end;
-  gap: 10px;
-  margin-top: 15px;
-  padding: 13px;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface-2);
@@ -558,7 +553,7 @@ onMounted(() => {
 }
 
 .range-dash {
-  padding-bottom: 10px;
+  padding-bottom: 8px;
   color: var(--muted-2);
 }
 
@@ -571,18 +566,18 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   margin-top: 16px;
-  padding: 11px 0;
-  border-top: 1px solid var(--border);
+  padding: 12px 0;
+  border-top: 1px solid var(--divider);
   color: var(--muted-2);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 .filter-footer span {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .filter-summary {
@@ -596,7 +591,7 @@ onMounted(() => {
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 11px;
+  gap: 12px;
 }
 
 .summary-skeleton {
@@ -616,7 +611,7 @@ onMounted(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  padding: 21px 22px 16px;
+  padding: 20px 20px 16px;
 }
 
 .chart-heading {
@@ -624,13 +619,13 @@ onMounted(() => {
 }
 
 .chart-heading h2 {
-  font-size: 1.15rem;
+  font-size: 1.125rem;
 }
 
 .chart-heading > p:last-child {
   margin-top: 6px;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
   line-height: 1.6;
 }
 
@@ -640,20 +635,20 @@ onMounted(() => {
 }
 
 .chart-body {
-  padding: 8px 22px 20px;
+  padding: 8px 20px 20px;
 }
 
 .chart-empty-footer {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin: 0 22px 20px;
-  padding: 10px 12px;
+  gap: 8px;
+  margin: 0 20px 20px;
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-2);
   color: var(--muted);
-  font-size: 0.73rem;
+  font-size: 0.75rem;
 }
 
 .details-grid {
@@ -664,7 +659,7 @@ onMounted(() => {
 }
 
 .muscle-card {
-  padding: 20px 22px 22px;
+  padding: 20px 20px 20px;
   overflow: hidden;
 }
 
@@ -673,17 +668,17 @@ onMounted(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 17px;
+  margin-bottom: 16px;
 }
 
 .section-header p:last-child {
   margin-top: 6px;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.75rem;
 }
 
 .section-header h2 {
-  font-size: 1.1rem;
+  font-size: 1.125rem;
 }
 
 .muscle-table td {
@@ -702,14 +697,14 @@ onMounted(() => {
 }
 
 .method-card {
-  padding: 21px;
+  padding: 20px;
 }
 
 .method-icon {
   display: grid;
   width: 40px;
   height: 40px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   border: 1px solid var(--accent-line);
   border-radius: 11px;
   background: var(--accent-soft);
@@ -724,8 +719,8 @@ onMounted(() => {
 .method-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  margin: 17px 0 0;
+  gap: 16px;
+  margin: 16px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -733,20 +728,20 @@ onMounted(() => {
 .method-list li {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding-left: 13px;
+  gap: 4px;
+  padding-left: 12px;
   border-left: 1px solid var(--border-strong);
 }
 
 .method-list strong {
   color: var(--text-soft);
-  font-size: 0.74rem;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .method-list span {
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   line-height: 1.55;
 }
 
@@ -794,11 +789,11 @@ onMounted(() => {
 @media (max-width: 700px) {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
+    gap: 8px;
   }
 
   .filter-panel {
-    padding: 15px 15px 0;
+    padding: 16px 16px 0;
   }
 
   .period-group {
@@ -832,7 +827,7 @@ onMounted(() => {
   }
 
   .chart-header {
-    padding: 18px 17px 13px;
+    padding: 16px 16px 12px;
   }
 
   .chart-tabs {
@@ -841,15 +836,15 @@ onMounted(() => {
   }
 
   .chart-body {
-    padding: 4px 15px 15px;
+    padding: 4px 16px 16px;
   }
 
   .chart-empty-footer {
-    margin: 0 17px 17px;
+    margin: 0 16px 16px;
   }
 
   .muscle-card {
-    padding: 17px;
+    padding: 16px;
   }
 
   .section-header {

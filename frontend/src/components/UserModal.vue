@@ -221,8 +221,8 @@ async function submit() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 12px 13px;
+  gap: 16px;
+  padding: 12px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-2);

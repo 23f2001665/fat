@@ -256,11 +256,11 @@ async function submit() {
 .exercise-form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .muscles-section {
-  padding: 15px;
+  padding: 16px;
   border: 1px solid var(--border);
   border-radius: 13px;
   background: var(--surface-2);
@@ -270,18 +270,18 @@ async function submit() {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
 .muscles-header h3 {
-  font-size: 0.86rem;
+  font-size: 0.875rem;
 }
 
 .muscles-header p {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.5;
 }
 
@@ -302,7 +302,7 @@ async function submit() {
   flex: 0 0 auto;
   color: var(--muted-2);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   text-align: right;
 }
 
@@ -315,7 +315,7 @@ async function submit() {
   height: 39px;
   padding-top: 6px;
   padding-bottom: 6px;
-  font-size: 0.82rem;
+  font-size: 0.8125rem;
 }
 
 .role-select {
@@ -338,7 +338,7 @@ async function submit() {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   padding-top: 2px;
 }
 

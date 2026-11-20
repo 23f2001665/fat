@@ -155,6 +155,6 @@ async function submit() {
 .profile-form {
   display: flex;
   flex-direction: column;
-  gap: 17px;
+  gap: 16px;
 }
 </style>

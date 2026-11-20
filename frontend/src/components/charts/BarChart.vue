@@ -86,7 +86,7 @@ function valueCompact(value) {
 .vertical-scroll {
   position: relative;
   min-width: 100%;
-  padding: 8px 0 0 43px;
+  padding: 8px 0 0 44px;
   overflow-x: auto;
 }
 
@@ -140,7 +140,7 @@ function valueCompact(value) {
   min-width: 100%;
   height: 235px;
   align-items: flex-end;
-  gap: 14px;
+  gap: 12px;
 }
 
 .bars.dense {
@@ -155,7 +155,7 @@ function valueCompact(value) {
   align-items: center;
   align-self: stretch;
   justify-content: flex-end;
-  gap: 7px;
+  gap: 8px;
 }
 
 .bar-value {
@@ -201,7 +201,7 @@ function valueCompact(value) {
 .horizontal-chart {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   padding: 4px 0;
 }
 
@@ -209,14 +209,14 @@ function valueCompact(value) {
   display: grid;
   grid-template-columns: minmax(100px, 1.2fr) minmax(120px, 2.2fr) auto;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
 }
 
 .row-label {
   overflow: hidden;
   color: var(--text-soft);
-  font-size: 0.78rem;
-  font-weight: 550;
+  font-size: 0.8125rem;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -240,7 +240,7 @@ function valueCompact(value) {
 .row-value {
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   text-align: right;
   white-space: nowrap;
 }
@@ -258,13 +258,13 @@ function valueCompact(value) {
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius);
   color: var(--muted-2);
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
 }
 
 @media (max-width: 620px) {
   .horizontal-row {
     grid-template-columns: minmax(80px, 1fr) minmax(80px, 1.4fr) auto;
-    gap: 9px;
+    gap: 8px;
   }
 
   .vertical-scroll {

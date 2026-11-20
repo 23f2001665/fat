@@ -182,11 +182,11 @@ async function submit() {
 .item-form {
   display: flex;
   flex-direction: column;
-  gap: 17px;
+  gap: 16px;
 }
 
 .active-block {
-  padding: 13px 14px;
+  padding: 12px 12px;
   border: 1px solid var(--border);
   border-radius: 11px;
   background: var(--surface-2);

@@ -10,6 +10,10 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   date: { type: String, required: true },
   workoutSet: { type: Object, default: null },
+  // Set to copy values from when logging a new set (smart default).
+  templateSet: { type: Object, default: null },
+  // Sets already logged on this date, used to suggest numbers per exercise.
+  daySets: { type: Array, default: () => [] },
   exercises: { type: Array, default: () => [] },
   equipment: { type: Array, default: () => [] },
 })
@@ -34,6 +38,32 @@ function emptyForm() {
 }
 
 const editing = computed(() => Boolean(props.workoutSet))
+const prefilledFrom = ref(null)
+
+function lastSetFor(exerciseId) {
+  const matches = props.daySets.filter((item) => item.exercise_id === Number(exerciseId))
+  return matches[matches.length - 1] || null
+}
+
+const previousForExercise = computed(() =>
+  editing.value ? null : lastSetFor(form.value.exercise_id),
+)
+
+function describeSet(item) {
+  const partial = item.partial_reps ? ` + ${item.partial_reps} half` : ''
+  return `${formatNumber(item.weight, 2)} kg × ${item.complete_reps}${partial}`
+}
+
+// When the exercise changes, carry over the numbers from its last set today.
+function applyExerciseDefaults() {
+  if (editing.value) return
+  const previous = lastSetFor(form.value.exercise_id)
+  if (!previous) return
+  form.value.equipment_id = previous.equipment_id
+  form.value.weight = previous.weight
+  form.value.complete_reps = previous.complete_reps
+  form.value.partial_reps = previous.partial_reps
+}
 
 const availableExercises = computed(() => {
   const currentId = props.workoutSet?.exercise_id
@@ -49,6 +79,7 @@ watch(
   () => props.open,
   (isOpen) => {
     if (!isOpen) return
+    prefilledFrom.value = null
     if (props.workoutSet) {
       form.value = {
         date: props.workoutSet.date,
@@ -63,7 +94,26 @@ watch(
       }
       return
     }
-    const firstExercise = availableExercises.value[0]
+    const template = props.templateSet
+    const templateUsable =
+      template &&
+      availableExercises.value.some((item) => item.id === template.exercise_id && item.is_active) &&
+      availableEquipment.value.some((item) => item.id === template.equipment_id && item.is_active)
+    if (templateUsable) {
+      prefilledFrom.value = template
+      form.value = {
+        ...emptyForm(),
+        exercise_id: template.exercise_id,
+        equipment_id: template.equipment_id,
+        weight: template.weight,
+        complete_reps: template.complete_reps,
+        partial_reps: template.partial_reps,
+        rest_seconds: template.rest_seconds ?? '',
+        rir: template.rir ?? '',
+      }
+      return
+    }
+    const firstExercise = availableExercises.value.find((item) => item.is_active) || availableExercises.value[0]
     const preferredEquipment =
       availableEquipment.value.find((item) => item.id === 2) ||
       availableEquipment.value.find((item) => item.is_active) ||
@@ -169,15 +219,23 @@ async function submit() {
         </span>
       </div>
 
+      <div v-if="prefilledFrom" class="notice notice-accent prefill-note">
+        <Icon name="repeat" :size="16" class="notice-icon" />
+        <span>Prefilled from set #{{ prefilledFrom.sequence_number }}. Change only what’s different.</span>
+      </div>
+
       <div class="form-grid two">
         <label class="field">
           <span class="field-label">Exercise</span>
-          <select v-model="form.exercise_id" class="select" required>
+          <select v-model="form.exercise_id" class="select" required @change="applyExerciseDefaults">
             <option disabled value="">Choose an exercise</option>
             <option v-for="exercise in availableExercises" :key="exercise.id" :value="exercise.id">
               {{ exercise.name }}{{ exercise.is_active ? '' : ' · inactive' }}
             </option>
           </select>
+          <span v-if="previousForExercise" class="field-hint previous-hint">
+            Last set today: <strong class="mono">{{ describeSet(previousForExercise) }}</strong>
+          </span>
         </label>
 
         <label class="field">
@@ -310,17 +368,17 @@ async function submit() {
 .set-form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .preview-strip {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 13px 15px;
-  border: 1px solid var(--accent-line);
+  gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--accent-soft);
+  background: var(--surface-2);
 }
 
 .preview-item {
@@ -330,41 +388,48 @@ async function submit() {
 }
 
 .preview-item span {
-  color: #8be9dc;
-  font-size: 0.62rem;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
 }
 
 .preview-item strong {
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 1.02rem;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .preview-item small {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
 .preview-divider {
   width: 1px;
   height: 30px;
-  background: var(--accent-line);
+  background: var(--divider);
 }
 
 .preview-strip p {
   margin-left: auto;
-  color: #9adfd7;
-  font-size: 0.68rem;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.prefill-note {
+  align-items: center;
+}
+
+.previous-hint strong {
+  color: var(--text-soft);
+  font-weight: 500;
 }
 
 @media (max-width: 620px) {
   .preview-strip {
-    gap: 13px;
+    gap: 12px;
     flex-wrap: wrap;
   }
 
